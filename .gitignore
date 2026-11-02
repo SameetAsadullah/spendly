@@ -3,3 +3,5 @@ xcuserdata/
 DerivedData/
 *.xcuserstate
 build/
+# Generated from project.yml with XcodeGen
+*.xcodeproj/

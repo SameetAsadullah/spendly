@@ -6,29 +6,33 @@ All data stays on the device (SwiftData).
 ## Requirements
 
 - macOS with **Xcode 16 or later**
+- [XcodeGen](https://github.com/yonaskolb/XcodeGen) 2.46 or later: `brew install xcodegen`
 - iOS **17.0+** device or simulator
 
 ## Build and run
 
-1. Open `Spendly.xcodeproj` in Xcode.
-2. Select the **Spendly** target, then **Signing & Capabilities**:
-   - Choose your **Team**.
-   - Change the **Bundle Identifier** (`com.example.spendly`) to one you own, e.g. `com.yourname.spendly`.
-3. Select an iPhone simulator or your device and press **⌘R**.
+The Xcode project is not in the repository. XcodeGen makes it from `project.yml`.
 
-New source files that you add under `Spendly/` are picked up automatically, because the project uses
-Xcode's synchronized folders.
+1. Make the project:
 
-### If the project does not open
+   ```bash
+   xcodegen generate
+   ```
 
-The project file uses the Xcode 16 format. On an older Xcode, or if the file has a problem, make it
-again with [XcodeGen](https://github.com/yonaskolb/XcodeGen):
+2. Open `Spendly.xcodeproj` in Xcode.
+3. Select an iPhone simulator and press **⌘R**.
 
-```bash
-brew install xcodegen
-rm -rf Spendly.xcodeproj
-xcodegen generate
+To run on your own device, add your team and a bundle identifier that you own to the `Spendly` target
+in `project.yml`, then run `xcodegen generate` again:
+
+```yaml
+        DEVELOPMENT_TEAM: ABCDE12345
+        PRODUCT_BUNDLE_IDENTIFIER: com.yourname.spendly
 ```
+
+Change build settings in `project.yml`, not in Xcode. `xcodegen generate` replaces the project and
+removes changes that you made in Xcode. New source files under `Spendly/` do not need a new project,
+because the project uses a synchronized folder.
 
 ## Features
 
