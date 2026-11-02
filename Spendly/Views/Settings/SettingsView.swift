@@ -8,6 +8,7 @@ struct SettingsView: View {
     @AppStorage(AppSettings.currencyKey) private var currency = AppSettings.defaultCurrency
     @AppStorage(AppSettings.monthlyBudgetKey) private var storedMonthlyBudget = 0.0
     @AppStorage(AppSettings.appearanceKey) private var appearance: Appearance = .system
+    @AppStorage(AppSettings.appLockKey) private var appLockEnabled = false
 
     @State private var confirmDeleteAll = false
 
@@ -15,6 +16,24 @@ struct SettingsView: View {
         Binding(
             get: { storedMonthlyBudget > 0 ? Decimal(roundTripping: storedMonthlyBudget) : nil },
             set: { storedMonthlyBudget = max($0 ?? 0, 0).doubleValue }
+        )
+    }
+
+    /// Turning the lock on asks for authentication first, so a failing method cannot lock the user out.
+    private var appLockBinding: Binding<Bool> {
+        Binding(
+            get: { appLockEnabled },
+            set: { isOn in
+                guard isOn else {
+                    appLockEnabled = false
+                    return
+                }
+                Task {
+                    if await DeviceAuth.authenticate(reason: "Confirm that you can unlock Spendly.") {
+                        appLockEnabled = true
+                    }
+                }
+            }
         )
     }
 
@@ -42,6 +61,19 @@ struct SettingsView: View {
                     Text("Preferences")
                 } footer: {
                     Text("Changing the currency changes how amounts are shown. It does not convert them.")
+                }
+
+                Section {
+                    Toggle(isOn: appLockBinding) {
+                        Label("Require \(DeviceAuth.methodName)", systemImage: DeviceAuth.iconName)
+                    }
+                    .disabled(!DeviceAuth.isAvailable && !appLockEnabled)
+                } header: {
+                    Text("Security")
+                } footer: {
+                    Text(DeviceAuth.isAvailable
+                         ? "Spendly asks you to unlock it when you open it or come back to it. Your device passcode also works."
+                         : "Set a passcode on this device to lock Spendly.")
                 }
 
                 Section {

@@ -5,6 +5,7 @@ enum AppSettings {
     static let monthlyBudgetKey = "monthlyBudget"
     static let appearanceKey = "appearance"
     static let didSeedKey = "didSeedDefaultCategories"
+    static let appLockKey = "appLockEnabled"
 
     static var defaultCurrency: String {
         Locale.current.currency?.identifier ?? "USD"

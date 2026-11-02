@@ -16,6 +16,7 @@ struct SpendlyApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                .appLock()
                 .preferredColorScheme(appearance.colorScheme)
         }
         .modelContainer(container)
