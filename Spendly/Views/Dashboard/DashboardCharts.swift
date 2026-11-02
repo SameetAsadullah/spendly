@@ -85,14 +85,7 @@ struct DailySpendingChart: View {
                 .cornerRadius(4)
             }
             if average > 0 {
-                RuleMark(y: .value("Daily average", average.doubleValue))
-                    .foregroundStyle(Color.orange)
-                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
-                    .annotation(position: .top, alignment: .leading) {
-                        Text("avg \(average.formattedCurrency(currency, fractionDigits: 0))")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.orange)
-                    }
+                AverageRule(label: "Daily average", average: average, currency: currency)
             }
         }
         .chartXScale(domain: interval.start...interval.end)
@@ -102,7 +95,66 @@ struct DailySpendingChart: View {
                 AxisValueLabel(format: .dateTime.day())
             }
         }
-        .chartYAxis {
+        .currencyYAxis(currency)
+        .frame(height: 190)
+    }
+}
+
+struct MonthlyTrendChart: View {
+    let totals: [MonthTotal]
+    let currency: String
+    var highlightedMonth: Date?
+    var height: CGFloat = 190
+
+    private var average: Decimal {
+        totals.isEmpty ? 0 : totals.reduce(0) { $0 + $1.total } / Decimal(totals.count)
+    }
+
+    var body: some View {
+        Chart {
+            ForEach(totals) { item in
+                BarMark(
+                    x: .value("Month", item.month, unit: .month),
+                    y: .value("Spent", item.total.doubleValue)
+                )
+                .foregroundStyle(Theme.heroGradient)
+                .opacity(highlightedMonth == nil || item.month == highlightedMonth ? 1 : 0.4)
+                .cornerRadius(4)
+            }
+            if average > 0 {
+                AverageRule(label: "Monthly average", average: average, currency: currency)
+            }
+        }
+        .chartXAxis {
+            AxisMarks(values: .stride(by: .month)) { _ in
+                AxisValueLabel(format: .dateTime.month(totals.count > 6 ? .narrow : .abbreviated), centered: true)
+            }
+        }
+        .currencyYAxis(currency)
+        .frame(height: height)
+    }
+}
+
+struct AverageRule: ChartContent {
+    let label: String
+    let average: Decimal
+    let currency: String
+
+    var body: some ChartContent {
+        RuleMark(y: .value(label, average.doubleValue))
+            .foregroundStyle(Color.orange)
+            .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+            .annotation(position: .top, alignment: .leading) {
+                Text("avg \(average.formattedCurrency(currency, fractionDigits: 0))")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.orange)
+            }
+    }
+}
+
+extension View {
+    func currencyYAxis(_ currency: String) -> some View {
+        chartYAxis {
             AxisMarks(position: .leading) { value in
                 AxisGridLine()
                 AxisValueLabel {
@@ -112,6 +164,5 @@ struct DailySpendingChart: View {
                 }
             }
         }
-        .frame(height: 190)
     }
 }

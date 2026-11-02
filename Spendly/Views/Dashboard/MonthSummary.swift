@@ -80,3 +80,28 @@ struct MonthSummary {
         slices.first { $0.id == category.persistentModelID }?.total ?? 0
     }
 }
+
+struct MonthTotal: Identifiable {
+    let month: Date
+    let total: Decimal
+    let count: Int
+    var id: Date { month }
+}
+
+enum MonthlyTrend {
+    /// Oldest month first. Months without expenses are included with a zero total.
+    static func totals(
+        for expenses: [Expense],
+        monthsEndingAt end: Date,
+        count: Int,
+        calendar: Calendar = .current
+    ) -> [MonthTotal] {
+        let lastMonth = calendar.startOfMonth(for: end)
+        let byMonth = Dictionary(grouping: expenses) { calendar.startOfMonth(for: $0.date) }
+        return (0..<count).reversed().compactMap { offset in
+            guard let month = calendar.date(byAdding: .month, value: -offset, to: lastMonth) else { return nil }
+            let items = byMonth[month] ?? []
+            return MonthTotal(month: month, total: items.reduce(0) { $0 + $1.amount }, count: items.count)
+        }
+    }
+}

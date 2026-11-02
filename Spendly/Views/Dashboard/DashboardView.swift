@@ -29,9 +29,13 @@ struct DashboardView: View {
 
                     if summary.count == 0 {
                         emptyMonthCard
+                        if !expenses.isEmpty {
+                            trendCard
+                        }
                     } else {
                         categoryCard(summary)
                         dailyCard(summary)
+                        trendCard
                         budgetsCard(summary)
                         recentCard(summary)
                     }
@@ -251,6 +255,27 @@ struct DashboardView: View {
                 interval: summary.interval,
                 average: summary.dailyAverage,
                 currency: currency
+            )
+        }
+        .card()
+    }
+
+    private var trendCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                CardHeader(title: "Trends", subtitle: "6 months to \(month.formatted(.dateTime.month(.wide)))")
+                Spacer()
+                NavigationLink {
+                    TrendsView(endMonth: month)
+                } label: {
+                    Text("See all").font(.subheadline.weight(.semibold))
+                }
+            }
+            MonthlyTrendChart(
+                totals: MonthlyTrend.totals(for: expenses, monthsEndingAt: month, count: 6),
+                currency: currency,
+                highlightedMonth: month,
+                height: 150
             )
         }
         .card()
