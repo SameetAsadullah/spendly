@@ -171,6 +171,8 @@ struct DashboardView: View {
                     .frame(width: 160, height: 160)
                     .offset(x: -150, y: 80)
             }
+            // Clipping does not limit hit testing, so the circles would cover the month switcher.
+            .allowsHitTesting(false)
         }
         .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
         .shadow(color: Color(hex: "#4F46E5").opacity(0.3), radius: 16, y: 8)
