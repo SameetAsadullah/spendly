@@ -5,10 +5,7 @@ enum PreviewData {
     @MainActor
     static let container: ModelContainer = {
         do {
-            let container = try ModelContainer(
-                for: Expense.self, ExpenseCategory.self,
-                configurations: ModelConfiguration(isStoredInMemoryOnly: true)
-            )
+            let container = try ModelContainer.spendly(inMemory: true)
             SampleData.insertSampleExpenses(in: container.mainContext)
             return container
         } catch {

@@ -5,11 +5,19 @@ import SwiftUI
 struct SpendlyApp: App {
     @AppStorage(AppSettings.appearanceKey) private var appearance: Appearance = .system
 
+    private let container: ModelContainer = {
+        do {
+            return try .spendly()
+        } catch {
+            fatalError("Could not open the expense store: \(error)")
+        }
+    }()
+
     var body: some Scene {
         WindowGroup {
             RootView()
                 .preferredColorScheme(appearance.colorScheme)
         }
-        .modelContainer(for: [Expense.self, ExpenseCategory.self])
+        .modelContainer(container)
     }
 }
