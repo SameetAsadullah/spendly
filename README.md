@@ -38,6 +38,8 @@ xcodegen generate
 - Interactive donut chart by category (tap a slice), with a ranked list you can drill into
 - Daily spending bar chart with an average line
 - Budget progress for each category, recent expenses, and stat tiles (count, daily average, largest)
+- Trends: monthly totals for the last 6 or 12 months, for all categories or one category, with the
+  change against the month before. Tap a month to see its expenses.
 
 **Expenses**
 - Add, edit, duplicate and delete expenses (swipe actions and context menu)
@@ -59,6 +61,7 @@ xcodegen generate
 
 **Settings**
 - Currency (any ISO currency), appearance (System, Light, Dark), and overall monthly budget
+- App lock with Face ID, Touch ID or the device passcode, at launch and when you come back to the app
 - Export all expenses to CSV, add sample data, delete all expenses
 
 ## Project structure
@@ -66,16 +69,17 @@ xcodegen generate
 ```
 Spendly/
 ├── SpendlyApp.swift              App entry point and SwiftData container
-├── Models/                       Expense, ExpenseCategory, PaymentMethod, Recurrence
+├── Models/                       Expense, ExpenseCategory, PaymentMethod, Recurrence, versioned schema
 ├── Filtering/ExpenseFilter.swift Filter, sort and date-preset logic
-├── Services/                     Recurring processor, CSV export, seed and sample data
+├── Services/                     Recurring processor, CSV export, seed and sample data, device authentication
 ├── Utilities/                    Settings keys, formatting, theme, preview data
 ├── Views/
 │   ├── RootView.swift            Tab bar
-│   ├── Dashboard/                Overview, charts, and month summary
+│   ├── Dashboard/                Overview, charts, month summary, and trends
 │   ├── Expenses/                 List, row, editor, filter sheet, filter chips
 │   ├── Categories/               List and editor
 │   ├── Settings/                 Settings and currency picker
+│   ├── Lock/                     App lock screen
 │   └── Components/               Shared UI (icons, chips, budget bar, flow layout)
 └── Assets.xcassets               App icon and accent color
 ```
