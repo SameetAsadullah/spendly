@@ -4,7 +4,7 @@ import SwiftUI
 struct CategorySlice: Identifiable {
     let id: PersistentIdentifier?
     let category: ExpenseCategory?
-    let total: Double
+    let total: Decimal
     let count: Int
 
     var name: String { category?.name ?? "Uncategorized" }
@@ -14,15 +14,15 @@ struct CategorySlice: Identifiable {
 
 struct DailyTotal: Identifiable {
     let day: Date
-    let total: Double
+    let total: Decimal
     var id: Date { day }
 }
 
 struct MonthSummary {
     let interval: DateInterval
     let expenses: [Expense]
-    let total: Double
-    let previousTotal: Double
+    let total: Decimal
+    let previousTotal: Decimal
     let slices: [CategorySlice]
     let daily: [DailyTotal]
     let daysCounted: Int
@@ -68,15 +68,15 @@ struct MonthSummary {
     }
 
     var count: Int { expenses.count }
-    var dailyAverage: Double { total / Double(max(daysCounted, 1)) }
+    var dailyAverage: Decimal { total / Decimal(max(daysCounted, 1)) }
     var largest: Expense? { expenses.max { $0.amount < $1.amount } }
 
     /// Fractional change against the previous month; nil when there is nothing to compare.
     var changeRatio: Double? {
-        previousTotal > 0 ? (total - previousTotal) / previousTotal : nil
+        previousTotal > 0 ? ((total - previousTotal) / previousTotal).doubleValue : nil
     }
 
-    func spent(in category: ExpenseCategory) -> Double {
+    func spent(in category: ExpenseCategory) -> Decimal {
         slices.first { $0.id == category.persistentModelID }?.total ?? 0
     }
 }

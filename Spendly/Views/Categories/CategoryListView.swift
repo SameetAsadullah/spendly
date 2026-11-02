@@ -12,9 +12,9 @@ struct CategoryListView: View {
     @State private var editingCategory: ExpenseCategory?
     @State private var pendingDelete: ExpenseCategory?
 
-    private var monthSpending: [PersistentIdentifier: Double] {
+    private var monthSpending: [PersistentIdentifier: Decimal] {
         let month = Calendar.current.monthInterval(for: .now)
-        var totals: [PersistentIdentifier: Double] = [:]
+        var totals: [PersistentIdentifier: Decimal] = [:]
         for expense in expenses where month.containsHalfOpen(expense.date) {
             if let id = expense.category?.persistentModelID {
                 totals[id, default: 0] += expense.amount
@@ -135,7 +135,7 @@ struct CategoryListView: View {
         }
     }
 
-    private func overview(spending: [PersistentIdentifier: Double]) -> some View {
+    private func overview(spending: [PersistentIdentifier: Decimal]) -> some View {
         let budgeted = categories.filter(\.hasBudget)
         let totalBudget = budgeted.reduce(0) { $0 + $1.monthlyBudget }
         let spentInBudgeted = budgeted.reduce(0) { $0 + (spending[$1.persistentModelID] ?? 0) }
@@ -146,7 +146,7 @@ struct CategoryListView: View {
             StatTile(
                 title: "Budget used",
                 value: totalBudget > 0
-                    ? (spentInBudgeted / totalBudget).formatted(.percent.precision(.fractionLength(0)))
+                    ? (spentInBudgeted / totalBudget).doubleValue.formatted(.percent.precision(.fractionLength(0)))
                     : "—",
                 icon: "gauge.with.dots.needle.33percent",
                 tint: .teal
@@ -180,7 +180,7 @@ struct CategoryListView: View {
 
 struct CategoryRow: View {
     let category: ExpenseCategory
-    let spent: Double
+    let spent: Decimal
     let currency: String
 
     var body: some View {
@@ -197,7 +197,7 @@ struct CategoryRow: View {
                         .monospacedDigit()
                 }
                 if category.hasBudget {
-                    BudgetBar(progress: spent / category.monthlyBudget, tint: category.color, height: 6)
+                    BudgetBar(progress: (spent / category.monthlyBudget).doubleValue, tint: category.color, height: 6)
                     budgetCaption
                 } else {
                     Text("\(category.expenseCount) \(category.expenseCount == 1 ? "expense" : "expenses") · No budget")

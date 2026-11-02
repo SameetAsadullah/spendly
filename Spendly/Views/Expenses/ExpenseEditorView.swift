@@ -65,7 +65,7 @@ struct ExpenseEditorView: View {
         return nil
     }
 
-    private var amount: Double? { AmountParser.parse(amountText) }
+    private var amount: Decimal? { AmountParser.parse(amountText) }
     private var isValid: Bool { (amount ?? 0) > 0 }
 
     private var knownTags: [String] {

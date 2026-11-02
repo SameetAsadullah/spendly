@@ -136,7 +136,7 @@ struct FlowLayout: Layout {
 /// Text field bound to an optional amount; nil when empty or unparsable.
 struct AmountField: View {
     let placeholder: String
-    @Binding var value: Double?
+    @Binding var value: Decimal?
     @State private var text = ""
 
     var body: some View {

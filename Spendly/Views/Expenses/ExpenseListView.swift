@@ -31,7 +31,7 @@ struct ExpenseListView: View {
         let id: String
         let title: String
         let items: [Expense]
-        var total: Double { items.reduce(0) { $0 + $1.amount } }
+        var total: Decimal { items.reduce(0) { $0 + $1.amount } }
     }
 
     private var presetCategory: ExpenseCategory? {
@@ -116,7 +116,7 @@ struct ExpenseListView: View {
 
     // MARK: Pieces
 
-    private func summary(count: Int, total: Double) -> some View {
+    private func summary(count: Int, total: Decimal) -> some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(filter.isActive || !filter.searchText.isEmpty ? "Filtered total" : "Total spent")
@@ -133,7 +133,7 @@ struct ExpenseListView: View {
             VStack(alignment: .trailing, spacing: 2) {
                 Text("\(count) \(count == 1 ? "expense" : "expenses")")
                     .font(.subheadline.weight(.semibold))
-                Text("avg \((total / Double(max(count, 1))).formattedCurrency(currency))")
+                Text("avg \((total / Decimal(max(count, 1))).formattedCurrency(currency))")
                     .font(.caption)
                     .opacity(0.85)
             }

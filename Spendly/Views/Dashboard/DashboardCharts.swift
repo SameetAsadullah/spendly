@@ -3,7 +3,7 @@ import SwiftUI
 
 struct CategoryDonutChart: View {
     let slices: [CategorySlice]
-    let total: Double
+    let total: Decimal
     let currency: String
     @State private var selectedAngle: Double?
 
@@ -11,7 +11,7 @@ struct CategoryDonutChart: View {
         guard let selectedAngle else { return nil }
         var cumulative = 0.0
         for slice in slices {
-            cumulative += slice.total
+            cumulative += slice.total.doubleValue
             if selectedAngle <= cumulative { return slice }
         }
         return nil
@@ -23,7 +23,7 @@ struct CategoryDonutChart: View {
         ZStack {
             Chart(slices) { slice in
                 SectorMark(
-                    angle: .value("Amount", slice.total),
+                    angle: .value("Amount", slice.total.doubleValue),
                     innerRadius: .ratio(0.64),
                     angularInset: 1.5
                 )
@@ -44,7 +44,7 @@ struct CategoryDonutChart: View {
                         .lineLimit(1)
                     Text(selected.total.formattedCurrency(currency))
                         .font(.headline)
-                    Text((selected.total / max(total, 1)).formatted(.percent.precision(.fractionLength(0))))
+                    Text((selected.total / max(total, 1)).doubleValue.formatted(.percent.precision(.fractionLength(0))))
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(.secondary)
                 } else {
@@ -71,7 +71,7 @@ struct CategoryDonutChart: View {
 struct DailySpendingChart: View {
     let daily: [DailyTotal]
     let interval: DateInterval
-    let average: Double
+    let average: Decimal
     let currency: String
 
     var body: some View {
@@ -79,13 +79,13 @@ struct DailySpendingChart: View {
             ForEach(daily) { item in
                 BarMark(
                     x: .value("Day", item.day, unit: .day),
-                    y: .value("Spent", item.total)
+                    y: .value("Spent", item.total.doubleValue)
                 )
                 .foregroundStyle(Theme.heroGradient)
                 .cornerRadius(4)
             }
             if average > 0 {
-                RuleMark(y: .value("Daily average", average))
+                RuleMark(y: .value("Daily average", average.doubleValue))
                     .foregroundStyle(Color.orange)
                     .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
                     .annotation(position: .top, alignment: .leading) {
@@ -107,7 +107,7 @@ struct DailySpendingChart: View {
                 AxisGridLine()
                 AxisValueLabel {
                     if let amount = value.as(Double.self) {
-                        Text(amount.formattedCurrency(currency, fractionDigits: 0))
+                        Text(amount, format: .currency(code: currency).precision(.fractionLength(0)))
                     }
                 }
             }

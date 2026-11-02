@@ -6,10 +6,12 @@ struct DashboardView: View {
     @Query(sort: [SortDescriptor(\ExpenseCategory.sortOrder), SortDescriptor(\ExpenseCategory.name)])
     private var categories: [ExpenseCategory]
     @AppStorage(AppSettings.currencyKey) private var currency = AppSettings.defaultCurrency
-    @AppStorage(AppSettings.monthlyBudgetKey) private var monthlyBudget = 0.0
+    @AppStorage(AppSettings.monthlyBudgetKey) private var storedMonthlyBudget = 0.0
 
     @State private var month = Calendar.current.startOfMonth(for: .now)
     @State private var editorRoute: ExpenseEditorRoute?
+
+    private var monthlyBudget: Decimal { Decimal(roundTripping: storedMonthlyBudget) }
 
     private var isCurrentMonth: Bool {
         Calendar.current.isDate(month, equalTo: .now, toGranularity: .month)
@@ -128,7 +130,7 @@ struct DashboardView: View {
                 .minimumScaleFactor(0.5)
 
             if monthlyBudget > 0 {
-                let progress = summary.total / monthlyBudget
+                let progress = (summary.total / monthlyBudget).doubleValue
                 let remaining = monthlyBudget - summary.total
                 VStack(alignment: .leading, spacing: 6) {
                     BudgetBar(progress: progress, tint: .white, height: 8)
@@ -222,7 +224,7 @@ struct DashboardView: View {
                                     .font(.subheadline.weight(.semibold))
                                     .monospacedDigit()
                                     .foregroundStyle(Color.primary)
-                                Text((slice.total / max(summary.total, 1)).formatted(.percent.precision(.fractionLength(0))))
+                                Text((slice.total / max(summary.total, 1)).doubleValue.formatted(.percent.precision(.fractionLength(0))))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -262,7 +264,7 @@ struct DashboardView: View {
                 CardHeader(title: "Budgets", subtitle: "Per-category limits")
                 ForEach(budgeted) { category in
                     let spent = summary.spent(in: category)
-                    let progress = spent / category.monthlyBudget
+                    let progress = (spent / category.monthlyBudget).doubleValue
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(spacing: 8) {
                             CategoryIcon(category: category, size: 26)

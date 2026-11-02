@@ -6,7 +6,7 @@ enum SampleData {
         let name: String
         let icon: String
         let color: String
-        let budget: Double
+        let budget: Decimal
         let samples: [(title: String, range: ClosedRange<Double>)]
     }
 
@@ -79,7 +79,7 @@ enum SampleData {
 
                 let expense = Expense(
                     title: sample.title,
-                    amount: (Double.random(in: sample.range) * 100).rounded() / 100,
+                    amount: Decimal(Int((Double.random(in: sample.range) * 100).rounded())) / 100,
                     date: date,
                     paymentMethod: methods.randomElement() ?? .card,
                     tags: Bool.random() ? [sampleTags.randomElement()!] : []

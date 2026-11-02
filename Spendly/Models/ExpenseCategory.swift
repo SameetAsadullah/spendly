@@ -8,14 +8,14 @@ final class ExpenseCategory {
     var iconName: String = "tag.fill"
     var colorHex: String = "#2E86DE"
     /// 0 means no budget.
-    var monthlyBudget: Double = 0
+    var monthlyBudget: Decimal = 0
     var sortOrder: Int = 0
     var createdAt: Date = Date.now
 
     @Relationship(deleteRule: .nullify, inverse: \Expense.category)
     var expenses: [Expense]? = []
 
-    init(name: String, iconName: String, colorHex: String, monthlyBudget: Double = 0, sortOrder: Int = 0) {
+    init(name: String, iconName: String, colorHex: String, monthlyBudget: Decimal = 0, sortOrder: Int = 0) {
         self.name = name
         self.iconName = iconName
         self.colorHex = colorHex

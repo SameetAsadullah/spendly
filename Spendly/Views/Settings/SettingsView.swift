@@ -6,15 +6,15 @@ struct SettingsView: View {
     @Query(sort: \Expense.date, order: .reverse) private var expenses: [Expense]
     @Query private var categories: [ExpenseCategory]
     @AppStorage(AppSettings.currencyKey) private var currency = AppSettings.defaultCurrency
-    @AppStorage(AppSettings.monthlyBudgetKey) private var monthlyBudget = 0.0
+    @AppStorage(AppSettings.monthlyBudgetKey) private var storedMonthlyBudget = 0.0
     @AppStorage(AppSettings.appearanceKey) private var appearance: Appearance = .system
 
     @State private var confirmDeleteAll = false
 
-    private var budgetBinding: Binding<Double?> {
+    private var budgetBinding: Binding<Decimal?> {
         Binding(
-            get: { monthlyBudget > 0 ? monthlyBudget : nil },
-            set: { monthlyBudget = max($0 ?? 0, 0) }
+            get: { storedMonthlyBudget > 0 ? Decimal(roundTripping: storedMonthlyBudget) : nil },
+            set: { storedMonthlyBudget = max($0 ?? 0, 0).doubleValue }
         )
     }
 

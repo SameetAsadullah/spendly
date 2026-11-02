@@ -1,6 +1,14 @@
 import Foundation
 
-extension Double {
+extension Decimal {
+    /// Goes through the shortest text form of the Double, so 12.34 stays 12.34 and does not become 12.3399….
+    init(roundTripping value: Double) {
+        self = Decimal(string: String(value), locale: Locale(identifier: "en_US_POSIX")) ?? Decimal(value)
+    }
+
+    /// For charts and progress ratios only. Keep money arithmetic in Decimal.
+    var doubleValue: Double { NSDecimalNumber(decimal: self).doubleValue }
+
     func formattedCurrency(_ code: String, fractionDigits: Int? = nil) -> String {
         if let fractionDigits {
             return formatted(.currency(code: code).precision(.fractionLength(fractionDigits)))
@@ -11,25 +19,27 @@ extension Double {
 
 /// Parses user-typed amounts in the current locale ("12,50" or "12.50").
 enum AmountParser {
-    static func parse(_ text: String) -> Double? {
+    static func parse(_ text: String) -> Decimal? {
         let trimmed = text.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return nil }
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.isLenient = true
-        if let number = formatter.number(from: trimmed) {
-            return number.doubleValue
+        formatter.generatesDecimalNumbers = true
+        if let number = formatter.number(from: trimmed) as? NSDecimalNumber {
+            return number.decimalValue
         }
-        return Double(trimmed.replacingOccurrences(of: ",", with: "."))
+        return Decimal(string: trimmed.replacingOccurrences(of: ",", with: "."),
+                       locale: Locale(identifier: "en_US_POSIX"))
     }
 
-    static func string(from value: Double) -> String {
+    static func string(from value: Decimal) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.usesGroupingSeparator = false
         formatter.minimumFractionDigits = 0
         formatter.maximumFractionDigits = 2
-        return formatter.string(from: NSNumber(value: value)) ?? ""
+        return formatter.string(from: NSDecimalNumber(decimal: value)) ?? ""
     }
 }
 

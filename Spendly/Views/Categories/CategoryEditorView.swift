@@ -13,7 +13,7 @@ struct CategoryEditorView: View {
     @State private var name: String
     @State private var iconName: String
     @State private var colorHex: String
-    @State private var budget: Double?
+    @State private var budget: Decimal?
     @State private var customColor: Color
 
     init(category: ExpenseCategory?, onSave: ((ExpenseCategory) -> Void)? = nil) {

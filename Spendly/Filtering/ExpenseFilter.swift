@@ -138,8 +138,8 @@ struct ExpenseFilter: Equatable {
     var categoryIDs: Set<PersistentIdentifier> = []
     var includeUncategorized = false
     var paymentMethods: Set<PaymentMethod> = []
-    var minAmount: Double?
-    var maxAmount: Double?
+    var minAmount: Decimal?
+    var maxAmount: Decimal?
     var tags: Set<String> = []
     var recurringOnly = false
     var sort: SortOption = .newest

@@ -3,6 +3,10 @@ import Foundation
 import UniformTypeIdentifiers
 
 enum CSVExporter {
+    private static let amountStyle = Decimal.FormatStyle(locale: Locale(identifier: "en_US_POSIX"))
+        .precision(.fractionLength(2))
+        .grouping(.never)
+
     static func csv(for expenses: [Expense], currency: String) -> String {
         let dateFormatter = ISO8601DateFormatter()
         dateFormatter.formatOptions = [.withFullDate]
@@ -13,7 +17,7 @@ enum CSVExporter {
             let fields = [
                 dateFormatter.string(from: expense.date),
                 escape(expense.displayTitle),
-                String(format: "%.2f", expense.amount),
+                expense.amount.formatted(amountStyle),
                 currency,
                 escape(expense.category?.name ?? "Uncategorized"),
                 escape(expense.paymentMethod.title),

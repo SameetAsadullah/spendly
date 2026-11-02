@@ -4,7 +4,7 @@ import SwiftData
 @Model
 final class Expense {
     var title: String = ""
-    var amount: Double = 0
+    var amount: Decimal = 0
     var date: Date = Date.now
     var notes: String = ""
     // Enums are stored as raw strings so they stay safe in predicates and migrations.
@@ -16,7 +16,7 @@ final class Expense {
 
     init(
         title: String = "",
-        amount: Double = 0,
+        amount: Decimal = 0,
         date: Date = .now,
         notes: String = "",
         paymentMethod: PaymentMethod = .card,
