@@ -49,12 +49,8 @@ struct CategoryEditorView: View {
                             .animation(.snappy, value: iconName)
                             .animation(.snappy, value: colorHex)
                         Text(trimmedName.isEmpty ? "New Category" : trimmedName)
-                            .font(.title3.weight(.bold))
-                        if let budget, budget > 0 {
-                            Text("Budget \(budget.formattedCurrency(currency)) / month")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
+                            .font(.title3.weight(.semibold))
+                            .multilineTextAlignment(.center)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
@@ -74,51 +70,60 @@ struct CategoryEditorView: View {
                 }
 
                 Section("Color") {
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 8), spacing: 12) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 8), spacing: 6) {
                         ForEach(CategoryPalette.colors, id: \.self) { hex in
+                            let isSelected = colorHex == hex
                             Button {
                                 colorHex = hex
                             } label: {
                                 Circle()
                                     .fill(Color(hex: hex))
-                                    .frame(width: 30, height: 30)
+                                    .padding(5)
                                     .overlay {
-                                        if colorHex == hex {
-                                            Image(systemName: "checkmark")
-                                                .font(.caption.weight(.bold))
-                                                .foregroundStyle(.white)
+                                        if isSelected {
+                                            Circle().strokeBorder(Color(hex: hex), lineWidth: 2)
                                         }
                                     }
+                                    .aspectRatio(1, contentMode: .fit)
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel("Color \(hex)")
+                            .accessibilityAddTraits(isSelected ? .isSelected : [])
                         }
                     }
                     .padding(.vertical, 6)
-                    ColorPicker("Custom color", selection: $customColor, supportsOpacity: false)
+                    ColorPicker("Custom Color", selection: $customColor, supportsOpacity: false)
                         .onChange(of: customColor) { _, newValue in
                             if let hex = newValue.hexString { colorHex = hex }
                         }
                 }
 
                 Section("Icon") {
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 6), spacing: 8) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 8), spacing: 6) {
                         ForEach(CategoryPalette.icons, id: \.self) { icon in
                             let isSelected = iconName == icon
                             Button {
                                 iconName = icon
                             } label: {
                                 Image(systemName: icon)
-                                    .font(.system(size: 18, weight: .medium))
-                                    .frame(width: 44, height: 44)
-                                    .foregroundStyle(isSelected ? Color.white : Color.primary)
+                                    .font(.footnote.weight(.medium))
+                                    .foregroundStyle(isSelected ? Color(hex: colorHex) : Color.primary)
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                    .aspectRatio(1, contentMode: .fit)
                                     .background(
-                                        isSelected ? Color(hex: colorHex) : Color(.tertiarySystemFill),
-                                        in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        Color(.tertiarySystemFill),
+                                        in: RoundedRectangle(cornerRadius: 10, style: .continuous)
                                     )
+                                    .overlay {
+                                        if isSelected {
+                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                                .strokeBorder(Color(hex: colorHex), lineWidth: 2)
+                                        }
+                                    }
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(icon)
+                            .accessibilityAddTraits(isSelected ? .isSelected : [])
                         }
                     }
                     .padding(.vertical, 6)
@@ -133,7 +138,7 @@ struct CategoryEditorView: View {
                 } header: {
                     Text("Monthly Budget")
                 } footer: {
-                    Text("Optional. Shows progress on the Overview and warns when you go over.")
+                    Text("Optional. Leave empty for no budget bar.")
                 }
             }
             .scrollDismissesKeyboard(.interactively)
@@ -171,3 +176,37 @@ struct CategoryEditorView: View {
         dismiss()
     }
 }
+
+#if DEBUG
+#Preview("New, light") {
+    CategoryEditorView(category: nil).modelContainer(PreviewData.container).previewVariant(.light)
+}
+
+#Preview("New, dark") {
+    CategoryEditorView(category: nil).modelContainer(PreviewData.container).previewVariant(.dark)
+}
+
+#Preview("New, accessibility3") {
+    CategoryEditorView(category: nil).modelContainer(PreviewData.container).previewVariant(.accessibility)
+}
+
+@MainActor private struct EditPreview: View {
+    var body: some View {
+        let category = try? PreviewData.container.mainContext
+            .fetch(FetchDescriptor<ExpenseCategory>(sortBy: [SortDescriptor(\.sortOrder)])).first
+        CategoryEditorView(category: category)
+    }
+}
+
+#Preview("Edit, light") {
+    EditPreview().modelContainer(PreviewData.container).previewVariant(.light)
+}
+
+#Preview("Edit, dark") {
+    EditPreview().modelContainer(PreviewData.container).previewVariant(.dark)
+}
+
+#Preview("Edit, accessibility3") {
+    EditPreview().modelContainer(PreviewData.container).previewVariant(.accessibility)
+}
+#endif
