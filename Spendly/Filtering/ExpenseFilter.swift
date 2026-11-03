@@ -119,8 +119,8 @@ enum SortOption: String, CaseIterable, Identifiable {
             }
         case .category:
             return items.sorted { lhs, rhs in
-                let left = lhs.category?.name ?? "\u{FFFF}"
-                let right = rhs.category?.name ?? "\u{FFFF}"
+                let left = lhs.category?.path ?? "\u{FFFF}"
+                let right = rhs.category?.path ?? "\u{FFFF}"
                 if left != right {
                     return left.localizedCaseInsensitiveCompare(right) == .orderedAscending
                 }
@@ -268,5 +268,142 @@ extension ExpenseFilter {
         datePreset = .custom
         customStart = interval.start
         customEnd = interval.end.addingTimeInterval(-1)
+    }
+}
+
+/// One removable category entry in the active filter bar.
+struct CategoryFilterChip: Identifiable {
+    enum Scope {
+        case whole
+        case subcategory(ExpenseCategory)
+        case noSubcategory
+    }
+
+    let category: ExpenseCategory
+    let scope: Scope
+
+    var id: String {
+        switch scope {
+        case .whole: "whole-\(category.persistentModelID.hashValue)"
+        case .subcategory(let sub): "sub-\(sub.persistentModelID.hashValue)"
+        case .noSubcategory: "none-\(category.persistentModelID.hashValue)"
+        }
+    }
+
+    var label: String {
+        switch scope {
+        case .whole: category.path
+        case .subcategory(let sub): sub.path
+        case .noSubcategory: "\(category.name) › No subcategory"
+        }
+    }
+
+    var iconName: String {
+        if case .subcategory(let sub) = scope { return sub.iconName }
+        return category.iconName
+    }
+}
+
+extension ExpenseFilter {
+    /// The one category or subcategory the filter is narrowed to, or nil when it holds several
+    /// or the main category is narrowed to "No subcategory" or to more than one subcategory.
+    var singleCategoryID: PersistentIdentifier? {
+        guard categoryIDs.count == 1, let id = categoryIDs.first else { return nil }
+        guard let kept = subcategoryIDs[id], !kept.isEmpty else { return id }
+        guard kept.count == 1, let only = kept.first, only != id else { return nil }
+        return only
+    }
+
+    func categoryChips(in categories: [ExpenseCategory]) -> [CategoryFilterChip] {
+        var chips: [CategoryFilterChip] = []
+        for category in categories where categoryIDs.contains(category.persistentModelID) {
+            if category.isSubcategory {
+                chips.append(CategoryFilterChip(category: category.mainCategory, scope: .subcategory(category)))
+                continue
+            }
+            let kept = subcategoryIDs[category.persistentModelID] ?? []
+            guard !kept.isEmpty else {
+                chips.append(CategoryFilterChip(category: category, scope: .whole))
+                continue
+            }
+            for sub in category.sortedSubcategories where kept.contains(sub.persistentModelID) {
+                chips.append(CategoryFilterChip(category: category, scope: .subcategory(sub)))
+            }
+            if kept.contains(category.persistentModelID) {
+                chips.append(CategoryFilterChip(category: category, scope: .noSubcategory))
+            }
+        }
+        return chips
+    }
+
+    /// Removes the chip's selection. Removing the last narrowed subcategory removes the category.
+    mutating func remove(_ chip: CategoryFilterChip) {
+        let mainID = chip.category.persistentModelID
+        switch chip.scope {
+        case .whole:
+            deselect(chip.category)
+        case .subcategory(let sub):
+            if categoryIDs.contains(sub.persistentModelID) {
+                categoryIDs.remove(sub.persistentModelID)
+            } else {
+                removeKept(sub.persistentModelID, of: mainID)
+            }
+        case .noSubcategory:
+            removeKept(mainID, of: mainID)
+        }
+    }
+
+    private mutating func removeKept(_ id: PersistentIdentifier, of mainID: PersistentIdentifier) {
+        var kept = subcategoryIDs[mainID] ?? []
+        kept.remove(id)
+        if kept.isEmpty {
+            categoryIDs.remove(mainID)
+            subcategoryIDs[mainID] = nil
+        } else {
+            subcategoryIDs[mainID] = kept
+        }
+    }
+
+    /// Selects or deselects a main category. Deselecting drops its subcategory narrowing.
+    mutating func toggle(_ main: ExpenseCategory) {
+        if categoryIDs.contains(main.persistentModelID) {
+            deselect(main)
+        } else {
+            categoryIDs.insert(main.persistentModelID)
+        }
+    }
+
+    mutating func deselect(_ main: ExpenseCategory) {
+        categoryIDs.remove(main.persistentModelID)
+        subcategoryIDs[main.persistentModelID] = nil
+    }
+
+    func isNarrowed(_ main: ExpenseCategory) -> Bool {
+        !(subcategoryIDs[main.persistentModelID] ?? []).isEmpty
+    }
+
+    /// Toggles a subcategory, or "No subcategory" when `sub` is nil. Choosing every chip returns to all.
+    mutating func toggleSubcategory(_ sub: ExpenseCategory?, of main: ExpenseCategory) {
+        let mainID = main.persistentModelID
+        var kept = subcategoryIDs[mainID] ?? []
+        kept.toggle(sub?.persistentModelID ?? mainID)
+        let everything = Set(main.sortedSubcategories.map(\.persistentModelID)).union([mainID])
+        subcategoryIDs[mainID] = kept.isEmpty || kept == everything ? nil : kept
+    }
+
+    /// Rewrites a subcategory selected directly in `categoryIDs` as narrowing of its main category,
+    /// which matches the same expenses and is what the filter sheet shows.
+    mutating func foldDirectSubcategories(in categories: [ExpenseCategory]) {
+        for sub in categories where sub.isSubcategory && categoryIDs.contains(sub.persistentModelID) {
+            let mainID = sub.mainCategory.persistentModelID
+            categoryIDs.remove(sub.persistentModelID)
+            if !categoryIDs.contains(mainID) {
+                categoryIDs.insert(mainID)
+                subcategoryIDs[mainID, default: []].insert(sub.persistentModelID)
+            } else if var kept = subcategoryIDs[mainID], !kept.isEmpty {
+                kept.insert(sub.persistentModelID)
+                subcategoryIDs[mainID] = kept
+            }
+        }
     }
 }
