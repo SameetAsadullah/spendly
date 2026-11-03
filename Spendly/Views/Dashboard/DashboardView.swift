@@ -482,6 +482,7 @@ struct DashboardView: View {
     }
 }
 
+#if DEBUG
 private struct OverviewPreview: View {
     var variant: PreviewVariant
     var budget: Double = 0
@@ -522,3 +523,4 @@ private extension Date {
 #Preview("No expenses · Light") { OverviewPreview(variant: .light, container: PreviewData.emptyContainer) }
 #Preview("No expenses · Dark") { OverviewPreview(variant: .dark, container: PreviewData.emptyContainer) }
 #Preview("No expenses · Accessibility 3") { OverviewPreview(variant: .accessibility, container: PreviewData.emptyContainer) }
+#endif

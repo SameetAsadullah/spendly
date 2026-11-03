@@ -242,6 +242,7 @@ extension Set {
     }
 }
 
+#if DEBUG
 private struct FilterSheetPreview: View {
     @Query(sort: \ExpenseCategory.sortOrder) private var categories: [ExpenseCategory]
     @State private var filter: ExpenseFilter = {
@@ -273,3 +274,4 @@ private struct FilterSheetPreview: View {
         .modelContainer(PreviewData.container)
         .previewVariant(.accessibility)
 }
+#endif

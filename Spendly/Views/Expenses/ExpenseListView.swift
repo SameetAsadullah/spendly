@@ -303,6 +303,7 @@ struct ExpenseListView: View {
     }
 }
 
+#if DEBUG
 private var previewFiltered: ExpenseFilter {
     var filter = ExpenseFilter()
     filter.datePreset = .thisMonth
@@ -387,3 +388,4 @@ private var previewNoResults: ExpenseFilter {
         .modelContainer(PreviewData.emptyContainer)
         .previewVariant(.accessibility)
 }
+#endif

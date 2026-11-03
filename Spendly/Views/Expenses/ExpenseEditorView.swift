@@ -401,6 +401,7 @@ struct TagEditor: View {
     }
 }
 
+#if DEBUG
 private struct EditExpensePreview: View {
     @Query(sort: \Expense.date, order: .reverse) private var expenses: [Expense]
 
@@ -446,3 +447,4 @@ private struct EditExpensePreview: View {
         .modelContainer(PreviewData.container)
         .previewVariant(.accessibility)
 }
+#endif

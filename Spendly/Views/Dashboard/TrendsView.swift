@@ -151,6 +151,7 @@ private struct MonthTrendRow: View {
     }
 }
 
+#if DEBUG
 #Preview("Default · Light") {
     NavigationStack { TrendsView(endMonth: .now) }
         .modelContainer(PreviewData.container)
@@ -168,3 +169,4 @@ private struct MonthTrendRow: View {
         .modelContainer(PreviewData.container)
         .previewVariant(.accessibility)
 }
+#endif
