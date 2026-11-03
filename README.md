@@ -41,8 +41,9 @@ because the project uses a synchronized folder.
 - Overall monthly budget progress
 - Interactive donut chart by category (tap a slice), with a ranked list you can drill into
 - Daily spending bar chart with an average line
-- Budget progress for each category, recent expenses, and stat tiles (count, daily average, largest)
-- Trends: monthly totals for the last 6 or 12 months, for all categories or one category, with the
+- Budget progress for each category in the ranked list, recent expenses, and stat tiles (count,
+  daily average, largest)
+- Totals for the last 6 months. Tap See all for Trends: monthly totals for the last 6 or 12 months, for all categories or one category, with the
   change against the month before. Tap a month to see its expenses.
 
 **Expenses**
@@ -59,9 +60,10 @@ because the project uses a synchronized folder.
 **Categories**
 - Create custom categories with a name, color (palette or custom) and SF Symbol icon
 - Optional monthly budget for each category, with progress
-- Reorder (Edit button), edit, and delete. When you delete a category, you can keep its expenses
-  as Uncategorized or delete them too.
-- Tap a category to see its expenses, with all filters available
+- Categories are sorted by what you spent on them this month
+- Tap a category to edit it. Swipe left to delete it. When you delete a category, you can keep its
+  expenses as Uncategorized or delete them too.
+- Touch and hold a category, then tap Show Expenses to see its expenses, with all filters available
 
 **Settings**
 - Currency (any ISO currency), appearance (System, Light, Dark), and overall monthly budget
