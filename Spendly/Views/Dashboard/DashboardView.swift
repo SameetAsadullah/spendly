@@ -10,6 +10,7 @@ struct DashboardView: View {
 
     @State private var month: Date
     @State private var editorRoute: ExpenseEditorRoute?
+    @State private var selectedSliceID: PersistentIdentifier?
 
     init(month: Date = .now) {
         _month = State(initialValue: Calendar.current.startOfMonth(for: month))
@@ -319,7 +320,9 @@ struct DashboardView: View {
     private func categoryCard(_ summary: MonthSummary) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             CardHeader(title: "By Category", subtitle: "\(summary.slices.count) \(summary.slices.count == 1 ? "category" : "categories")")
-            CategoryDonutChart(slices: summary.slices, total: summary.total, currency: currency)
+            CategoryDonutChart(slices: summary.slices, total: summary.total, currency: currency) { slice in
+                selectedSliceID = slice?.id
+            }
 
             VStack(spacing: 8) {
                 ForEach(summary.slices) { slice in
@@ -329,8 +332,13 @@ struct DashboardView: View {
                         categoryRow(slice, total: summary.total)
                     }
                     .buttonStyle(.plain)
+
+                    if slice.id != nil, slice.id == selectedSliceID, !slice.subslices.isEmpty {
+                        subcategoryRows(slice, total: summary.total)
+                    }
                 }
             }
+            .animation(.snappy, value: selectedSliceID)
         }
         .card()
     }
@@ -339,6 +347,8 @@ struct DashboardView: View {
         let share = (slice.total / max(total, 1)).doubleValue.formatted(.percent.precision(.fractionLength(0)))
         let budget = slice.category?.monthlyBudget ?? 0
         let progress = budget > 0 ? (slice.total / budget).doubleValue : 0
+        let subcategoryCount = slice.subslices.filter { !$0.isRemainder }.count
+        let subcategories = subcategoryCount > 0 ? " · \(subcategoryCount) \(subcategoryCount == 1 ? "subcategory" : "subcategories")" : ""
 
         return HStack(alignment: .top, spacing: 10) {
             CategoryIcon(iconName: slice.iconName, color: slice.color, size: 26)
@@ -353,7 +363,7 @@ struct DashboardView: View {
                         .monospacedDigit()
                         .foregroundStyle(Color.primary)
                 }
-                Text("\(share) · \(slice.count) \(slice.count == 1 ? "expense" : "expenses")")
+                Text("\(share) · \(slice.count) \(slice.count == 1 ? "expense" : "expenses")\(subcategories)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 if budget > 0 {
@@ -377,6 +387,55 @@ struct DashboardView: View {
                 .accessibilityHidden(true)
         }
         .padding(.vertical, 4)
+        .contentShape(Rectangle())
+    }
+
+    private func subcategoryRows(_ slice: CategorySlice, total: Decimal) -> some View {
+        VStack(spacing: 8) {
+            ForEach(slice.subslices) { sub in
+                NavigationLink {
+                    ExpenseListView(title: sub.isRemainder ? "\(slice.name) › No subcategory" : (sub.category?.path ?? sub.name),
+                                    filter: subcategoryFilter(for: sub, in: slice))
+                } label: {
+                    subcategoryRow(sub, total: total)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.leading, 12)
+        .overlay(alignment: .leading) {
+            Rectangle()
+                .fill(slice.color)
+                .frame(width: 2)
+        }
+        .padding(.leading, 12)
+        .transition(.opacity)
+    }
+
+    private func subcategoryRow(_ sub: CategorySlice, total: Decimal) -> some View {
+        let share = (sub.total / max(total, 1)).doubleValue.formatted(.percent.precision(.fractionLength(0)))
+
+        return HStack(spacing: 10) {
+            CategoryIcon(iconName: sub.isRemainder ? "tray" : sub.iconName, color: sub.color, size: 22)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(sub.name)
+                    .font(.subheadline)
+                    .foregroundStyle(Color.primary)
+                Text("\(share) · \(sub.count) \(sub.count == 1 ? "expense" : "expenses")")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+            Text(sub.total.formattedCurrency(currency))
+                .font(.subheadline.weight(.semibold))
+                .monospacedDigit()
+                .foregroundStyle(Color.primary)
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .accessibilityHidden(true)
+        }
+        .padding(.vertical, 2)
         .contentShape(Rectangle())
     }
 
@@ -473,6 +532,14 @@ struct DashboardView: View {
         withAnimation(.snappy) {
             month = Calendar.current.startOfMonth(for: next)
         }
+    }
+
+    private func subcategoryFilter(for sub: CategorySlice, in slice: CategorySlice) -> ExpenseFilter {
+        var filter = monthFilter(for: sub.category)
+        if sub.isRemainder, let main = slice.category {
+            filter.subcategoryIDs[main.persistentModelID] = [main.persistentModelID]
+        }
+        return filter
     }
 
     private func monthFilter(for category: ExpenseCategory?) -> ExpenseFilter {

@@ -5,6 +5,7 @@ struct CategoryDonutChart: View {
     let slices: [CategorySlice]
     let total: Decimal
     let currency: String
+    var onSelect: (CategorySlice?) -> Void = { _ in }
     @State private var selectedAngle: Double?
 
     private var selectedSlice: CategorySlice? {
@@ -65,6 +66,7 @@ struct CategoryDonutChart: View {
         }
         .frame(height: 230)
         .animation(.snappy, value: selectedAngle)
+        .onChange(of: selectedAngle) { onSelect(selectedSlice) }
     }
 }
 
