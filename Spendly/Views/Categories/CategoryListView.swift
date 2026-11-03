@@ -141,18 +141,17 @@ struct CategoryListView: View {
         let spentInBudgeted = budgeted.reduce(0) { $0 + (spending[$1.persistentModelID] ?? 0) }
         let overBudget = budgeted.filter { (spending[$0.persistentModelID] ?? 0) > $0.monthlyBudget }.count
 
-        return HStack(spacing: 12) {
-            StatTile(title: "Categories", value: "\(categories.count)", icon: "square.grid.2x2.fill", tint: .indigo)
+        return StatTileRow {
+            StatTile(icon: "square.grid.2x2", value: "\(categories.count)", label: "Categories")
             StatTile(
-                title: "Budget used",
+                icon: "gauge.with.dots.needle.33percent",
                 value: totalBudget > 0
                     ? (spentInBudgeted / totalBudget).doubleValue.formatted(.percent.precision(.fractionLength(0)))
                     : "—",
-                icon: "gauge.with.dots.needle.33percent",
+                label: "Budget used",
                 tint: .teal
             )
-            StatTile(title: "Over budget", value: "\(overBudget)", icon: "exclamationmark.triangle.fill",
-                     tint: overBudget > 0 ? .red : .green)
+            StatTile(icon: "exclamationmark.triangle", value: "\(overBudget)", label: "Over budget", tint: .red)
         }
     }
 
@@ -216,29 +215,5 @@ struct CategoryRow: View {
                     : "\((-remaining).formattedCurrency(currency)) over budget")
             .font(.caption)
             .foregroundStyle(remaining >= 0 ? Color.secondary : Color.red)
-    }
-}
-
-struct StatTile: View {
-    let title: String
-    let value: String
-    let icon: String
-    let tint: Color
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Image(systemName: icon)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(tint)
-            Text(value)
-                .font(.system(.title3, design: .rounded, weight: .bold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-        }
-        .card(padding: 12)
     }
 }

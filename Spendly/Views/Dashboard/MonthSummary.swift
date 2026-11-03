@@ -9,7 +9,7 @@ struct CategorySlice: Identifiable {
 
     var name: String { category?.name ?? "Uncategorized" }
     var iconName: String { category?.iconName ?? "questionmark" }
-    var color: Color { category?.color ?? .gray }
+    var color: Color { category?.color ?? Theme.uncategorized }
 }
 
 struct DailyTotal: Identifiable {

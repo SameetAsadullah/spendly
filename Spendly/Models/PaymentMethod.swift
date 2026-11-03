@@ -23,12 +23,12 @@ enum PaymentMethod: String, CaseIterable, Identifiable, Codable {
 
     var icon: String {
         switch self {
-        case .card: "creditcard.fill"
-        case .debit: "creditcard"
-        case .cash: "banknote.fill"
-        case .bankTransfer: "building.columns.fill"
+        case .card: "creditcard"
+        case .debit: "creditcard.fill"
+        case .cash: "banknote"
+        case .bankTransfer: "building.columns"
         case .mobile: "iphone"
-        case .other: "ellipsis.circle.fill"
+        case .other: "ellipsis.circle"
         }
     }
 }

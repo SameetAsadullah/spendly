@@ -17,7 +17,7 @@ struct RootView: View {
                 .tag(AppTab.overview)
 
             ExpensesTab()
-                .tabItem { Label("Expenses", systemImage: "list.bullet.rectangle.portrait.fill") }
+                .tabItem { Label("Expenses", systemImage: "list.bullet") }
                 .tag(AppTab.expenses)
 
             CategoryListView()

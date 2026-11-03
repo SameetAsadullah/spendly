@@ -13,11 +13,11 @@ enum Recurrence: String, CaseIterable, Identifiable, Codable {
     var title: String {
         switch self {
         case .never: "Never"
-        case .daily: "Every day"
-        case .weekly: "Every week"
-        case .biweekly: "Every 2 weeks"
-        case .monthly: "Every month"
-        case .yearly: "Every year"
+        case .daily: "Every Day"
+        case .weekly: "Every Week"
+        case .biweekly: "Every 2 Weeks"
+        case .monthly: "Every Month"
+        case .yearly: "Every Year"
         }
     }
 

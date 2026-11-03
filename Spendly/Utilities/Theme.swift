@@ -2,12 +2,40 @@ import SwiftUI
 import UIKit
 
 enum Theme {
+    /// The same in both themes. Use it only on the Overview hero card and the lock screen.
     static let heroGradient = LinearGradient(
         colors: [Color(hex: "#4F46E5"), Color(hex: "#7C3AED")],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
-    static let cardCornerRadius: CGFloat = 22
+    static let brand = Color(hex: "#4F46E5")
+    /// #4F46E5 in both themes, for surfaces with white text. AccentColor is too light in dark mode for that.
+    static let brandFill = Color("BrandFill")
+    static let uncategorized = Color(hex: "#8395A7")
+
+    enum Radius {
+        static let card: CGFloat = 22
+        static let hero: CGFloat = 26
+        static func icon(_ size: CGFloat) -> CGFloat { size * 0.3 }
+    }
+
+    enum Spacing {
+        static let gutter: CGFloat = 16
+        static let card: CGFloat = 16
+        static let tile: CGFloat = 12
+        static let hero: CGFloat = 20
+    }
+
+    static let averageLineStyle = StrokeStyle(lineWidth: 1.5, dash: [5, 4])
+}
+
+/// Money amounts are the only text with fixed sizes.
+extension Font {
+    static let editorAmount = Font.system(size: 52, weight: .bold, design: .rounded)
+    static let editorCurrencySymbol = Font.system(size: 30, weight: .semibold, design: .rounded)
+    static let heroAmount = Font.system(size: 42, weight: .bold, design: .rounded)
+    static let listTotalAmount = Font.system(size: 28, weight: .bold, design: .rounded)
+    static let tileAmount = Font.system(size: 20, weight: .bold, design: .rounded)
 }
 
 enum CategoryPalette {
@@ -62,8 +90,16 @@ extension View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 Color(.secondarySystemGroupedBackground),
-                in: RoundedRectangle(cornerRadius: Theme.cardCornerRadius, style: .continuous)
+                in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
             )
+    }
+
+    func heroShadow() -> some View {
+        shadow(color: Theme.brand.opacity(0.3), radius: 16, y: 8)
+    }
+
+    func addButtonShadow() -> some View {
+        shadow(color: Theme.brand.opacity(0.4), radius: 12, y: 6)
     }
 
     @MainActor

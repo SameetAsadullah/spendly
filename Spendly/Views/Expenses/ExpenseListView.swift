@@ -147,7 +147,7 @@ struct ExpenseListView: View {
         Button {
             editorRoute = .edit(expense)
         } label: {
-            ExpenseRow(expense: expense, currency: currency, showsDate: filter.sort.grouping != .day)
+            ExpenseRow(expense: expense, currency: currency, showsDay: filter.sort.grouping != .day)
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {

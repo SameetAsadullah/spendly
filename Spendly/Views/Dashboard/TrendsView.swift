@@ -39,15 +39,15 @@ struct TrendsView: View {
                 }
                 .pickerStyle(.segmented)
 
-                HStack(spacing: 12) {
-                    StatTile(title: "Total", value: total.formattedCurrency(currency, fractionDigits: 0),
-                             icon: "sum", tint: .indigo)
-                    StatTile(title: "Monthly avg",
+                StatTileRow {
+                    StatTile(icon: "dollarsign.circle", value: total.formattedCurrency(currency, fractionDigits: 0),
+                             label: "Total")
+                    StatTile(icon: "calendar",
                              value: (total / Decimal(totals.count)).formattedCurrency(currency, fractionDigits: 0),
-                             icon: "chart.bar.fill", tint: .orange)
-                    StatTile(title: highest.map { "Top: \($0.month.formatted(.dateTime.month(.abbreviated)))" } ?? "Highest",
+                             label: "Monthly average", tint: .orange)
+                    StatTile(icon: "arrow.up.circle",
                              value: (highest?.total ?? 0).formattedCurrency(currency, fractionDigits: 0),
-                             icon: "arrow.up.circle.fill", tint: .pink)
+                             label: highest.map { "Top month · \($0.month.formatted(.dateTime.month(.abbreviated)))" } ?? "Top month")
                 }
 
                 VStack(alignment: .leading, spacing: 14) {

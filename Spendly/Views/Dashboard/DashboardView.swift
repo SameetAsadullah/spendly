@@ -179,12 +179,12 @@ struct DashboardView: View {
     }
 
     private func statsRow(_ summary: MonthSummary) -> some View {
-        HStack(spacing: 12) {
-            StatTile(title: "Expenses", value: "\(summary.count)", icon: "list.bullet", tint: .indigo)
-            StatTile(title: "Daily avg", value: summary.dailyAverage.formattedCurrency(currency, fractionDigits: 0),
-                     icon: "calendar", tint: .orange)
-            StatTile(title: "Largest", value: (summary.largest?.amount ?? 0).formattedCurrency(currency, fractionDigits: 0),
-                     icon: "arrow.up.circle.fill", tint: .pink)
+        StatTileRow {
+            StatTile(icon: "list.bullet", value: "\(summary.count)", label: "Expenses")
+            StatTile(icon: "calendar", value: summary.dailyAverage.formattedCurrency(currency, fractionDigits: 0),
+                     label: "Daily average", tint: .orange)
+            StatTile(icon: "arrow.up.circle", value: (summary.largest?.amount ?? 0).formattedCurrency(currency, fractionDigits: 0),
+                     label: "Largest", tint: summary.largest?.category?.color ?? Theme.uncategorized)
         }
     }
 
@@ -328,7 +328,7 @@ struct DashboardView: View {
                 Button {
                     editorRoute = .edit(expense)
                 } label: {
-                    ExpenseRow(expense: expense, currency: currency, showsDate: true)
+                    ExpenseRow(expense: expense, currency: currency, showsDay: true)
                 }
                 .buttonStyle(.plain)
                 if expense.persistentModelID != summary.expenses.prefix(5).last?.persistentModelID {
@@ -368,22 +368,5 @@ struct DashboardView: View {
         var filter = ExpenseFilter.category(category)
         filter.restrict(toMonthOf: month)
         return filter
-    }
-}
-
-struct CardHeader: View {
-    let title: String
-    let subtitle: String?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(.headline)
-            if let subtitle {
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
     }
 }
