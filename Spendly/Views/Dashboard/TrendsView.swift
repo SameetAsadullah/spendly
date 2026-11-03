@@ -30,85 +30,81 @@ struct TrendsView: View {
         let total = totals.reduce(0) { $0 + $1.total }
         let highest = totals.filter { $0.total > 0 }.max { $0.total < $1.total }
 
-        ScrollView {
-            VStack(spacing: 16) {
+        List {
+            Section {
                 Picker("Period", selection: $period) {
                     ForEach(Period.allCases) { option in
                         Text(option.title).tag(option)
                     }
                 }
                 .pickerStyle(.segmented)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
+            }
 
+            Section {
+                Picker("Category", selection: $categoryID) {
+                    Text("All Categories").tag(PersistentIdentifier?.none)
+                    ForEach(categories) { category in
+                        Label(category.name, systemImage: category.iconName)
+                            .tag(Optional(category.persistentModelID))
+                    }
+                }
+                .pickerStyle(.menu)
+            }
+
+            Section {
                 StatTileRow {
                     StatTile(icon: "dollarsign.circle", value: total.formattedCurrency(currency, fractionDigits: 0),
                              label: "Total")
                     StatTile(icon: "calendar",
-                             value: (total / Decimal(totals.count)).formattedCurrency(currency, fractionDigits: 0),
+                             value: (total / Decimal(max(totals.count, 1))).formattedCurrency(currency, fractionDigits: 0),
                              label: "Monthly average", tint: .orange)
                     StatTile(icon: "arrow.up.circle",
                              value: (highest?.total ?? 0).formattedCurrency(currency, fractionDigits: 0),
                              label: highest.map { "Top month · \($0.month.formatted(.dateTime.month(.abbreviated)))" } ?? "Top month")
                 }
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
+            }
 
+            Section {
                 VStack(alignment: .leading, spacing: 14) {
-                    CardHeader(title: selectedCategory?.name ?? "All Categories", subtitle: periodLabel(totals))
-                    MonthlyTrendChart(totals: totals, currency: currency)
+                    CardHeader(title: "Monthly totals", subtitle: periodLabel(totals))
+                    MonthlyTrendChart(totals: totals, currency: currency,
+                                      highlightedMonth: Calendar.current.startOfMonth(for: endMonth))
                 }
                 .card()
-
-                monthsCard(totals)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
             }
-            .padding(.horizontal)
-            .padding(.bottom, 24)
+
+            Section {
+                ForEach(Array(totals.enumerated().reversed()), id: \.element.id) { index, item in
+                    NavigationLink {
+                        ExpenseListView(title: item.month.formatted(.dateTime.month(.wide).year()),
+                                        filter: filter(for: item.month))
+                    } label: {
+                        MonthTrendRow(item: item,
+                                      previousTotal: index > 0 ? totals[index - 1].total : nil,
+                                      currency: currency)
+                    }
+                }
+            } header: {
+                Text("By Month")
+            } footer: {
+                Text("Change is against the month before. Red means you spent more, green means less.")
+            }
         }
-        .background(Color(.systemGroupedBackground))
+        .listStyle(.insetGrouped)
         .navigationTitle("Trends")
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                categoryMenu
-            }
-        }
-    }
-
-    private var categoryMenu: some View {
-        Menu {
-            Picker("Category", selection: $categoryID) {
-                Text("All Categories").tag(PersistentIdentifier?.none)
-                ForEach(categories) { category in
-                    Label(category.name, systemImage: category.iconName)
-                        .tag(Optional(category.persistentModelID))
-                }
-            }
-        } label: {
-            Label("Category", systemImage: categoryID == nil
-                  ? "line.3.horizontal.decrease.circle"
-                  : "line.3.horizontal.decrease.circle.fill")
-        }
-    }
-
-    private func monthsCard(_ totals: [MonthTotal]) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            CardHeader(title: "By Month", subtitle: nil)
-                .padding(.bottom, 8)
-            ForEach(Array(totals.enumerated().reversed()), id: \.element.id) { index, item in
-                NavigationLink {
-                    ExpenseListView(title: item.month.formatted(.dateTime.month(.wide).year()),
-                                    filter: filter(for: item.month))
-                } label: {
-                    MonthTrendRow(item: item,
-                                  previousTotal: index > 0 ? totals[index - 1].total : nil,
-                                  currency: currency)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .card()
+        .navigationBarTitleDisplayMode(.large)
     }
 
     private func periodLabel(_ totals: [MonthTotal]) -> String {
         guard let first = totals.first?.month, let last = totals.last?.month else { return "" }
         let style = Date.FormatStyle.dateTime.month(.abbreviated).year()
-        return "\(first.formatted(style)) – \(last.formatted(style))"
+        return "\(first.formatted(style)) – \(last.formatted(style)) · \(selectedCategory?.name ?? "All Categories")"
     }
 
     private func filter(for month: Date) -> ExpenseFilter {
@@ -130,40 +126,45 @@ private struct MonthTrendRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(item.month, format: .dateTime.month(.wide).year())
                     .font(.subheadline.weight(.medium))
-                    .foregroundStyle(Color.primary)
                 Text("\(item.count) \(item.count == 1 ? "expense" : "expenses")")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 1) {
+            Spacer(minLength: 8)
+            VStack(alignment: .trailing, spacing: 2) {
                 Text(item.total.formattedCurrency(currency))
                     .font(.subheadline.weight(.semibold))
                     .monospacedDigit()
-                    .foregroundStyle(Color.primary)
                 if let change {
-                    Label(abs(change).formatted(.percent.precision(.fractionLength(0))),
-                          systemImage: change > 0 ? "arrow.up.right" : "arrow.down.right")
+                    let percent = abs(change).formatted(.percent.precision(.fractionLength(0)))
+                    Label(percent, systemImage: change > 0 ? "arrow.up" : "arrow.down")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(change > 0 ? Color.red : Color.green)
-                        .accessibilityLabel("\(change > 0 ? "Up" : "Down") \(abs(change).formatted(.percent.precision(.fractionLength(0)))) versus the month before")
+                        .accessibilityLabel("\(change > 0 ? "Up" : "Down") \(percent) versus the month before")
                 }
             }
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.tertiary)
         }
-        .padding(.vertical, 6)
-        .contentShape(Rectangle())
+        .padding(.vertical, 2)
     }
 }
 
-#Preview {
-    NavigationStack {
-        TrendsView(endMonth: .now)
-    }
-    .modelContainer(PreviewData.container)
+#Preview("Default · Light") {
+    NavigationStack { TrendsView(endMonth: .now) }
+        .modelContainer(PreviewData.container)
+        .previewVariant(.light)
+}
+
+#Preview("Default · Dark") {
+    NavigationStack { TrendsView(endMonth: .now) }
+        .modelContainer(PreviewData.container)
+        .previewVariant(.dark)
+}
+
+#Preview("Default · Accessibility 3") {
+    NavigationStack { TrendsView(endMonth: .now) }
+        .modelContainer(PreviewData.container)
+        .previewVariant(.accessibility)
 }
