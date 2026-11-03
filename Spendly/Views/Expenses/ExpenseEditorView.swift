@@ -31,11 +31,13 @@ struct ExpenseEditorView: View {
     @State private var title: String
     @State private var date: Date
     @State private var category: ExpenseCategory?
+    @State private var subcategory: ExpenseCategory?
     @State private var paymentMethod: PaymentMethod
     @State private var recurrence: Recurrence
     @State private var tags: [String]
     @State private var notes: String
     @State private var showNewCategory = false
+    @State private var showNewSubcategory = false
     @State private var confirmDelete = false
     @FocusState private var amountFocused: Bool
 
@@ -54,7 +56,9 @@ struct ExpenseEditorView: View {
         _amountText = State(initialValue: source.map { AmountParser.string(from: $0.amount) } ?? "")
         _title = State(initialValue: source?.title ?? "")
         _date = State(initialValue: isEdit ? (source?.date ?? .now) : .now)
-        _category = State(initialValue: source?.category ?? presetCategory)
+        let initial = source?.category ?? presetCategory
+        _category = State(initialValue: initial?.mainCategory)
+        _subcategory = State(initialValue: initial?.isSubcategory == true ? initial : nil)
         _paymentMethod = State(initialValue: source?.paymentMethod ?? .card)
         _recurrence = State(initialValue: isEdit ? (source?.recurrence ?? .never) : .never)
         _tags = State(initialValue: source?.tags ?? [])
@@ -65,6 +69,8 @@ struct ExpenseEditorView: View {
         if case .edit(let expense) = route { return expense }
         return nil
     }
+
+    private var mainCategories: [ExpenseCategory] { categories.filter { !$0.isSubcategory } }
 
     private var amount: Decimal? { AmountParser.parse(amountText) }
     private var isValid: Bool { (amount ?? 0) > 0 }
@@ -128,6 +134,12 @@ struct ExpenseEditorView: View {
             .sheet(isPresented: $showNewCategory) {
                 CategoryEditorView(category: nil) { newCategory in
                     category = newCategory
+                    subcategory = nil
+                }
+            }
+            .sheet(isPresented: $showNewSubcategory) {
+                SubcategoryEditorView(subcategory: nil, parent: category) { newSubcategory in
+                    subcategory = newSubcategory
                 }
             }
             .confirmationDialog("Delete this expense?", isPresented: $confirmDelete, titleVisibility: .visible) {
@@ -137,7 +149,7 @@ struct ExpenseEditorView: View {
             }
             .onAppear {
                 if case .new = route, category == nil {
-                    category = categories.first
+                    category = mainCategories.first
                 }
             }
             .task {
@@ -187,9 +199,12 @@ struct ExpenseEditorView: View {
                 columns: Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: isLargeText ? 3 : 5),
                 spacing: 8
             ) {
-                ForEach(categories) { item in
+                ForEach(mainCategories) { item in
                     CategoryChoice(category: item, isSelected: category == item) {
-                        withAnimation(.snappy) { category = item }
+                        withAnimation(.snappy) {
+                            if category != item { subcategory = nil }
+                            category = item
+                        }
                     }
                 }
                 Button { showNewCategory = true } label: {
@@ -213,6 +228,9 @@ struct ExpenseEditorView: View {
                 .accessibilityLabel("New category")
             }
             .padding(.vertical, 4)
+            if let category, category.hasSubcategories {
+                subcategoryPicker(for: category)
+            }
         } header: {
             Text("Category")
         } footer: {
@@ -220,6 +238,37 @@ struct ExpenseEditorView: View {
                 Text("No category selected. This expense will be Uncategorized.")
             }
         }
+    }
+
+    private func subcategoryPicker(for main: ExpenseCategory) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("\(main.name) subcategory")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            FlowLayout(spacing: 6) {
+                subcategoryChip("None", isSelected: subcategory == nil) { subcategory = nil }
+                ForEach(main.sortedSubcategories) { item in
+                    subcategoryChip(item.name, icon: item.iconName, isSelected: subcategory == item) {
+                        subcategory = item
+                    }
+                }
+                Button { showNewSubcategory = true } label: {
+                    Chip(text: "+ New", icon: "plus", iconTint: .accentColor)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func subcategoryChip(_ text: String, icon: String? = nil, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button {
+            withAnimation(.snappy, action)
+        } label: {
+            Chip(text: text, icon: icon, iconTint: category?.color, isSelected: isSelected)
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private var detailsSection: some View {
@@ -287,7 +336,7 @@ struct ExpenseEditorView: View {
         target.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
         target.amount = amount
         target.date = date
-        target.category = category
+        target.category = subcategory ?? category
         target.paymentMethod = paymentMethod
         target.recurrence = recurrence
         target.tags = tags
