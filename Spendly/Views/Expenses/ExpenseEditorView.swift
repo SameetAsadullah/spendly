@@ -300,23 +300,25 @@ struct ExpenseEditorView: View {
 
     private var dateRow: some View {
         let isToday = Calendar.current.isDateInToday(date)
-        let layout = isLargeText
+        let header = isLargeText
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
             : AnyLayout(HStackLayout(spacing: 8))
-        return layout {
-            Label("Date", systemImage: "calendar")
-            if !isLargeText { Spacer(minLength: 0) }
-            Button {
-                date = .now
-            } label: {
-                Text("Today")
-                    .font(.subheadline.weight(.medium))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .foregroundStyle(isToday ? Color.accentColor : Color.primary)
-                    .background(isToday ? Color.accentColor.opacity(0.14) : Color(.tertiarySystemFill), in: Capsule())
+        return VStack(alignment: .leading, spacing: 8) {
+            header {
+                Label("Date", systemImage: "calendar")
+                if !isLargeText { Spacer(minLength: 0) }
+                Button {
+                    date = .now
+                } label: {
+                    Text("Today")
+                        .font(.subheadline.weight(.medium))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .foregroundStyle(isToday ? Color.accentColor : Color.primary)
+                        .background(isToday ? Color.accentColor.opacity(0.14) : Color(.tertiarySystemFill), in: Capsule())
+                }
+                .buttonStyle(.borderless)
             }
-            .buttonStyle(.borderless)
             DatePicker("Date", selection: $date)
                 .labelsHidden()
         }
