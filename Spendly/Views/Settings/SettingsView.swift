@@ -122,7 +122,7 @@ struct SettingsView: View {
                         SettingsLabel("Expenses", systemImage: "list.bullet")
                     }
                     LabeledContent {
-                        Text("\(categories.count)")
+                        Text("\(categories.filter { !$0.isSubcategory }.count)")
                     } label: {
                         SettingsLabel("Categories", systemImage: "square.grid.2x2")
                     }

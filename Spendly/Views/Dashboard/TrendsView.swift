@@ -74,7 +74,7 @@ struct TrendsView: View {
             Section {
                 Picker("Category", selection: $categoryID) {
                     Text("All Categories").tag(PersistentIdentifier?.none)
-                    ForEach(categories) { category in
+                    ForEach(categories.filter { !$0.isSubcategory }) { category in
                         Label(category.name, systemImage: category.iconName)
                             .tag(Optional(category.persistentModelID))
                     }
