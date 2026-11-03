@@ -10,6 +10,8 @@ struct ExpenseFilterSheet: View {
     let availableTags: [String]
     @State private var draft: ExpenseFilter
 
+    private var mainCategories: [ExpenseCategory] { categories.filter { !$0.isSubcategory } }
+
     private let presets: [DatePreset] = [
         .allTime, .today, .thisWeek, .thisMonth, .last30Days, .lastMonth, .last3Months, .thisYear, .custom,
     ]
@@ -20,6 +22,7 @@ struct ExpenseFilterSheet: View {
         self.availableTags = availableTags
         var initial = filter.wrappedValue
         initial.syncDates()
+        initial.foldDirectSubcategories(in: categories)
         _draft = State(initialValue: initial)
     }
 
@@ -103,9 +106,9 @@ struct ExpenseFilterSheet: View {
         let hasSelection = !draft.categoryIDs.isEmpty || draft.includeUncategorized
         return Section {
             FlowLayout(spacing: 8) {
-                ForEach(categories) { category in
+                ForEach(mainCategories) { category in
                     Button {
-                        draft.categoryIDs.toggle(category.persistentModelID)
+                        draft.toggle(category)
                     } label: {
                         Chip(
                             text: category.name,
@@ -129,6 +132,10 @@ struct ExpenseFilterSheet: View {
                 .buttonStyle(.plain)
             }
             .padding(.vertical, 4)
+
+            ForEach(mainCategories.filter { draft.categoryIDs.contains($0.persistentModelID) && $0.hasSubcategories }) { main in
+                subcategoryRow(for: main)
+            }
         } header: {
             HStack(spacing: 12) {
                 Text("Categories")
@@ -136,13 +143,15 @@ struct ExpenseFilterSheet: View {
                 if hasSelection {
                     Button("Clear") {
                         draft.categoryIDs.removeAll()
+                        draft.subcategoryIDs.removeAll()
                         draft.includeUncategorized = false
                     }
                     .font(.footnote.weight(.semibold))
                     .textCase(nil)
                 }
                 Button("Select All") {
-                    draft.categoryIDs = Set(categories.map(\.persistentModelID))
+                    draft.categoryIDs = Set(mainCategories.map(\.persistentModelID))
+                    draft.subcategoryIDs.removeAll()
                     draft.includeUncategorized = true
                 }
                 .font(.footnote.weight(.semibold))
@@ -151,6 +160,43 @@ struct ExpenseFilterSheet: View {
         } footer: {
             Text("No selection shows all categories.")
         }
+    }
+
+    private func subcategoryRow(for main: ExpenseCategory) -> some View {
+        let kept = draft.subcategoryIDs[main.persistentModelID] ?? []
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("\(main.name) subcategories")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            FlowLayout(spacing: 8) {
+                Button {
+                    draft.subcategoryIDs[main.persistentModelID] = nil
+                } label: {
+                    Chip(text: "All", isSelected: kept.isEmpty)
+                }
+                .buttonStyle(.plain)
+                ForEach(main.sortedSubcategories) { sub in
+                    Button {
+                        draft.toggleSubcategory(sub, of: main)
+                    } label: {
+                        Chip(
+                            text: sub.name,
+                            icon: sub.iconName,
+                            iconTint: sub.color,
+                            isSelected: kept.contains(sub.persistentModelID)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+                Button {
+                    draft.toggleSubcategory(nil, of: main)
+                } label: {
+                    Chip(text: "No subcategory", isSelected: kept.contains(main.persistentModelID))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.vertical, 4)
     }
 
     private var amountSection: some View {
@@ -257,6 +303,20 @@ private struct FilterSheetPreview: View {
     }
 }
 
+private struct SubcategoryFilterSheetPreview: View {
+    @Query(sort: \ExpenseCategory.sortOrder) private var categories: [ExpenseCategory]
+
+    var body: some View {
+        if let food = categories.first(where: { $0.name == "Food & Dining" && !$0.isSubcategory }),
+           let outside = food.sortedSubcategories.first(where: { $0.name == "Outside" }) {
+            var filter = ExpenseFilter()
+            let _ = filter.categoryIDs = [food.persistentModelID]
+            let _ = filter.subcategoryIDs[food.persistentModelID] = [outside.persistentModelID]
+            ExpenseFilterSheet(filter: .constant(filter), categories: categories, availableTags: [])
+        }
+    }
+}
+
 #Preview("Filter light") {
     FilterSheetPreview()
         .modelContainer(PreviewData.container)
@@ -273,5 +333,17 @@ private struct FilterSheetPreview: View {
     FilterSheetPreview()
         .modelContainer(PreviewData.container)
         .previewVariant(.accessibility)
+}
+
+#Preview("Subcategory filter light") {
+    SubcategoryFilterSheetPreview()
+        .modelContainer(PreviewData.container)
+        .previewVariant(.light)
+}
+
+#Preview("Subcategory filter dark") {
+    SubcategoryFilterSheetPreview()
+        .modelContainer(PreviewData.container)
+        .previewVariant(.dark)
 }
 #endif
