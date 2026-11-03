@@ -45,64 +45,61 @@ struct SettingsView: View {
                         CurrencyPickerView(selection: $currency)
                     } label: {
                         LabeledContent {
-                            Text("\(currency) · \(AppSettings.currencySymbol(for: currency))")
+                            Text("\(currency) \(AppSettings.currencySymbol(for: currency))")
                         } label: {
-                            Label("Currency", systemImage: "dollarsign.circle.fill")
+                            SettingsLabel("Currency", systemImage: "dollarsign.circle")
                         }
                     }
-                    Picker(selection: $appearance) {
-                        ForEach(Appearance.allCases) { option in
-                            Text(option.title).tag(option)
-                        }
-                    } label: {
-                        Label("Appearance", systemImage: "circle.lefthalf.filled")
+                    HStack {
+                        SettingsLabel("Monthly Budget", systemImage: "target")
+                        Spacer(minLength: 8)
+                        AmountField(placeholder: "None", value: budgetBinding)
+                            .multilineTextAlignment(.trailing)
+                            .frame(maxWidth: 140)
                     }
+                    VStack(alignment: .leading, spacing: 10) {
+                        SettingsLabel("Appearance", systemImage: "circle.lefthalf.filled")
+                        Picker("Appearance", selection: $appearance) {
+                            ForEach(Appearance.allCases) { option in
+                                Text(option.title).tag(option)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                    }
+                    .padding(.vertical, 4)
                 } header: {
-                    Text("Preferences")
+                    Text("General")
                 } footer: {
-                    Text("Changing the currency changes how amounts are shown. It does not convert them.")
+                    Text("The budget drives the bar on the Overview. Leave it empty to hide it. Changing the currency changes how amounts are shown. It does not convert them.")
                 }
 
                 Section {
                     Toggle(isOn: appLockBinding) {
-                        Label("Require \(DeviceAuth.methodName)", systemImage: DeviceAuth.iconName)
+                        SettingsLabel("Require \(DeviceAuth.methodName)", systemImage: DeviceAuth.iconName)
                     }
                     .disabled(!DeviceAuth.isAvailable && !appLockEnabled)
                 } header: {
                     Text("Security")
                 } footer: {
                     Text(DeviceAuth.isAvailable
-                         ? "Spendly asks you to unlock it when you open it or come back to it. Your device passcode also works."
+                         ? "Spendly asks for \(DeviceAuth.methodName) before it shows your expenses."
                          : "Set a passcode on this device to lock Spendly.")
                 }
 
                 Section {
-                    HStack {
-                        Label("Monthly budget", systemImage: "target")
-                        Spacer()
-                        AmountField(placeholder: "None", value: budgetBinding)
-                            .multilineTextAlignment(.trailing)
-                            .frame(maxWidth: 140)
-                    }
-                } header: {
-                    Text("Budget")
-                } footer: {
-                    Text("Your overall spending limit for each month, shown on the Overview. Set per-category budgets in Categories.")
-                }
-
-                Section("Data") {
                     ShareLink(
                         item: CSVDocument(expenses: expenses, currency: currency, fileName: "All-Expenses"),
                         preview: SharePreview("All expenses (CSV)")
                     ) {
-                        Label("Export All Expenses (CSV)", systemImage: "square.and.arrow.up")
+                        SettingsLabel("Export All Expenses as CSV", systemImage: "square.and.arrow.up")
                     }
                     .disabled(expenses.isEmpty)
 
                     Button {
                         SampleData.insertSampleExpenses(in: context)
                     } label: {
-                        Label("Add Sample Expenses", systemImage: "wand.and.stars")
+                        SettingsLabel("Add Sample Expenses", systemImage: "sparkles")
                     }
 
                     Button(role: .destructive) {
@@ -112,24 +109,37 @@ struct SettingsView: View {
                             .foregroundStyle(.red)
                     }
                     .disabled(expenses.isEmpty)
+                } header: {
+                    Text("Data")
+                } footer: {
+                    Text("Your expenses are stored only on this device. There is no account and no sync.")
                 }
 
                 Section("About") {
-                    LabeledContent("Expenses", value: "\(expenses.count)")
-                    LabeledContent("Categories", value: "\(categories.count)")
-                    LabeledContent("Version", value: AppSettings.appVersion)
+                    LabeledContent {
+                        Text("\(expenses.count)")
+                    } label: {
+                        SettingsLabel("Expenses", systemImage: "list.bullet")
+                    }
+                    LabeledContent {
+                        Text("\(categories.count)")
+                    } label: {
+                        SettingsLabel("Categories", systemImage: "square.grid.2x2")
+                    }
+                    LabeledContent {
+                        Text(AppSettings.appVersion)
+                    } label: {
+                        SettingsLabel("Version", systemImage: "info.circle")
+                    }
                 }
             }
             .navigationTitle("Settings")
             .scrollDismissesKeyboard(.interactively)
-            .confirmationDialog(
-                "Delete all \(expenses.count) expenses?",
-                isPresented: $confirmDeleteAll,
-                titleVisibility: .visible
-            ) {
-                Button("Delete All Expenses", role: .destructive, action: deleteAllExpenses)
+            .alert("Delete All Expenses?", isPresented: $confirmDeleteAll) {
+                Button("Cancel", role: .cancel) {}
+                Button("Delete", role: .destructive, action: deleteAllExpenses)
             } message: {
-                Text("Categories are kept. This cannot be undone. Export a CSV first if you want a backup.")
+                Text("This permanently removes all \(expenses.count) \(expenses.count == 1 ? "expense" : "expenses") from this device. Categories and settings stay. This can’t be undone.")
             }
         }
     }
@@ -139,6 +149,25 @@ struct SettingsView: View {
             context.delete(expense)
         }
         try? context.save()
+    }
+}
+
+/// A row label whose symbol uses the accent color.
+private struct SettingsLabel: View {
+    let title: String
+    let systemImage: String
+
+    init(_ title: String, systemImage: String) {
+        self.title = title
+        self.systemImage = systemImage
+    }
+
+    var body: some View {
+        Label {
+            Text(title)
+        } icon: {
+            Image(systemName: systemImage).foregroundStyle(.tint)
+        }
     }
 }
 
@@ -158,31 +187,15 @@ struct CurrencyPickerView: View {
     }
 
     var body: some View {
-        List(filteredCodes, id: \.self) { code in
-            Button {
-                selection = code
-                dismiss()
-            } label: {
-                HStack(spacing: 12) {
-                    Text(AppSettings.currencySymbol(for: code))
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 44, alignment: .leading)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.6)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(AppSettings.currencyName(for: code))
-                            .foregroundStyle(Color.primary)
-                        Text(code)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    if code == selection {
-                        Image(systemName: "checkmark")
-                            .fontWeight(.semibold)
-                            .foregroundStyle(.tint)
-                    }
+        List {
+            if search.isEmpty {
+                Section("Selected") {
+                    row(for: selection)
+                }
+            }
+            Section("All Currencies") {
+                ForEach(filteredCodes, id: \.self) { code in
+                    row(for: code)
                 }
             }
         }
@@ -190,4 +203,54 @@ struct CurrencyPickerView: View {
         .navigationTitle("Currency")
         .navigationBarTitleDisplayMode(.inline)
     }
+
+    private func row(for code: String) -> some View {
+        Button {
+            selection = code
+            dismiss()
+        } label: {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(AppSettings.currencyName(for: code))
+                        .foregroundStyle(Color.primary)
+                    Text("\(code) · \(AppSettings.currencySymbol(for: code))")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 8)
+                if code == selection {
+                    Image(systemName: "checkmark")
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.tint)
+                }
+            }
+        }
+        .accessibilityAddTraits(code == selection ? .isSelected : [])
+    }
 }
+
+#if DEBUG
+#Preview("Settings, light") {
+    SettingsView().modelContainer(PreviewData.container).previewVariant(.light)
+}
+
+#Preview("Settings, dark") {
+    SettingsView().modelContainer(PreviewData.container).previewVariant(.dark)
+}
+
+#Preview("Settings, accessibility3") {
+    SettingsView().modelContainer(PreviewData.container).previewVariant(.accessibility)
+}
+
+#Preview("Currency, light") {
+    NavigationStack { CurrencyPickerView(selection: .constant("USD")) }.previewVariant(.light)
+}
+
+#Preview("Currency, dark") {
+    NavigationStack { CurrencyPickerView(selection: .constant("USD")) }.previewVariant(.dark)
+}
+
+#Preview("Currency, accessibility3") {
+    NavigationStack { CurrencyPickerView(selection: .constant("USD")) }.previewVariant(.accessibility)
+}
+#endif
