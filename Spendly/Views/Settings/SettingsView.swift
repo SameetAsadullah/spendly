@@ -96,12 +96,6 @@ struct SettingsView: View {
                     }
                     .disabled(expenses.isEmpty)
 
-                    Button {
-                        SampleData.insertSampleExpenses(in: context)
-                    } label: {
-                        SettingsLabel("Add Sample Expenses", systemImage: "sparkles")
-                    }
-
                     Button(role: .destructive) {
                         confirmDeleteAll = true
                     } label: {

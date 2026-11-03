@@ -2,7 +2,6 @@ import SwiftData
 import SwiftUI
 
 struct DashboardView: View {
-    @Environment(\.modelContext) private var context
     @Environment(\.selectTab) private var selectTab
     @Query(sort: \Expense.date, order: .reverse) private var expenses: [Expense]
     @AppStorage(AppSettings.currencyKey) private var currency = AppSettings.defaultCurrency
@@ -276,17 +275,6 @@ struct DashboardView: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
-            Button {
-                SampleData.insertSampleExpenses(in: context)
-            } label: {
-                Text("Load Sample Data").frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
-            Text("Delete All Expenses in Settings › Data removes it.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
         .card(padding: Theme.Spacing.hero)

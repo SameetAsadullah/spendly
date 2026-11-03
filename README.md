@@ -68,7 +68,7 @@ because the project uses a synchronized folder.
 **Settings**
 - Currency (any ISO currency), appearance (System, Light, Dark), and overall monthly budget
 - App lock with Face ID, Touch ID or the device passcode, at launch and when you come back to the app
-- Export all expenses to CSV, add sample data, delete all expenses
+- Export all expenses to CSV, delete all expenses
 
 ## Project structure
 
@@ -93,5 +93,4 @@ Spendly/
 ## Notes
 
 - On first launch, the app creates 10 suggested categories. You can edit or delete them.
-- To try the app with data, use **Settings → Add Sample Expenses**.
 - Changing the currency only changes how amounts are shown. It does not convert them.
