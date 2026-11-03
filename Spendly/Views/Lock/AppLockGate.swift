@@ -61,26 +61,68 @@ private struct LockScreen: View {
     var body: some View {
         ZStack {
             Theme.heroGradient
-            VStack(spacing: 18) {
+            Circle()
+                .fill(.white.opacity(0.08))
+                .frame(width: 320, height: 320)
+                .offset(x: 110, y: -110)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+            Circle()
+                .fill(.white.opacity(0.06))
+                .frame(width: 260, height: 260)
+                .offset(x: -90, y: 90)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+
+            VStack(spacing: 14) {
                 Image(systemName: "lock.fill")
-                    .font(.system(size: 44, weight: .semibold))
+                    .font(.largeTitle.weight(.semibold))
+                    .frame(width: 96, height: 96)
+                    .background(
+                        .white.opacity(0.18),
+                        in: RoundedRectangle(cornerRadius: Theme.Radius.icon(96), style: .continuous)
+                    )
+                    .padding(.bottom, 10)
+                    .accessibilityHidden(true)
                 Text("Spendly is locked")
-                    .font(.title2.weight(.bold))
-                if showsUnlockButton {
-                    Button(action: unlock) {
-                        Label("Unlock with \(DeviceAuth.methodName)", systemImage: DeviceAuth.iconName)
-                            .font(.headline)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
-                            .background(.white.opacity(0.2), in: Capsule())
-                    }
-                }
+                    .font(.title2.bold())
+                Text("Your expenses stay on this device. Unlock to see them.")
+                    .font(.subheadline)
+                    .opacity(0.85)
             }
-            .foregroundStyle(.white)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, Theme.Spacing.hero)
+        }
+        .clipped()
+        .foregroundStyle(.white)
+        .overlay(alignment: .bottom) {
+            if showsUnlockButton {
+                Button(action: unlock) {
+                    Label("Unlock with \(DeviceAuth.methodName)", systemImage: DeviceAuth.iconName)
+                        .font(.headline)
+                        .foregroundStyle(Theme.brand)
+                        .frame(maxWidth: .infinity, minHeight: 54)
+                        .background(.white, in: Capsule())
+                }
+                .padding(.horizontal, Theme.Spacing.hero)
+                .padding(.bottom, 24)
+            }
         }
         .ignoresSafeArea()
     }
 }
+
+#if DEBUG
+#Preview("Lock, light") {
+    LockScreen(showsUnlockButton: true) {}.previewVariant(.light)
+}
+
+#Preview("Lock, dark") {
+    LockScreen(showsUnlockButton: true) {}.previewVariant(.dark)
+}
+
+#Preview("Lock, accessibility3") {
+    LockScreen(showsUnlockButton: true) {}.previewVariant(.accessibility)
+}
+#endif
 
 extension View {
     func appLock() -> some View {
