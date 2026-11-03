@@ -37,7 +37,7 @@ commit=$(git -C "$CHECKOUT" rev-parse --short HEAD)
 
 (cd "$CHECKOUT" && xcodegen generate --quiet) || fail "xcodegen"
 xcodebuild -project "$CHECKOUT/Spendly.xcodeproj" -scheme Spendly -configuration Debug \
-    -destination "id=$DEVICE" -derivedDataPath "$DERIVED" -allowProvisioningUpdates -quiet build \
+    -destination "generic/platform=iOS" -derivedDataPath "$DERIVED" -allowProvisioningUpdates -quiet build \
     || fail "build of $commit"
 xcrun devicectl device install app --device "$DEVICE" "$DERIVED/Build/Products/Debug-iphoneos/Spendly.app" \
     || fail "install. Is the iPhone on the same Wi-Fi and unlocked?"
