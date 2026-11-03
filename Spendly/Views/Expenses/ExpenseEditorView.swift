@@ -18,6 +18,7 @@ enum ExpenseEditorRoute: Identifiable {
 struct ExpenseEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Query(sort: [SortDescriptor(\ExpenseCategory.sortOrder), SortDescriptor(\ExpenseCategory.name)])
     private var categories: [ExpenseCategory]
     @Query private var allExpenses: [Expense]
@@ -84,6 +85,10 @@ struct ExpenseEditorView: View {
         NavigationStack {
             Form {
                 amountSection
+                Section {
+                    TextField("Title, e.g. Lunch with the team", text: $title)
+                        .textInputAutocapitalization(.sentences)
+                }
                 categorySection
                 detailsSection
                 Section("Tags") {
@@ -96,7 +101,7 @@ struct ExpenseEditorView: View {
                 if editingExpense != nil {
                     Section {
                         Button("Delete Expense", role: .destructive) { confirmDelete = true }
-                            .frame(maxWidth: .infinity)
+                            .frame(maxWidth: .infinity, alignment: .center)
                     }
                 }
             }
@@ -145,28 +150,29 @@ struct ExpenseEditorView: View {
 
     // MARK: Sections
 
+    private var isLargeText: Bool { dynamicTypeSize.isAccessibilitySize }
+
     private var amountSection: some View {
         Section {
-            VStack(spacing: 6) {
-                Text("Amount")
-                    .font(.subheadline)
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(AppSettings.currencySymbol(for: currency))
+                    .font(.editorCurrencySymbol)
                     .foregroundStyle(.secondary)
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(AppSettings.currencySymbol(for: currency))
-                        .font(.system(size: 30, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.secondary)
-                    TextField("0", text: $amountText)
-                        .font(.system(size: 52, weight: .bold, design: .rounded))
-                        .keyboardType(.decimalPad)
-                        .focused($amountFocused)
-                        .fixedSize()
-                        .onChange(of: amountText) { _, newValue in
-                            let cleaned = newValue.filter { $0.isNumber || $0 == "." || $0 == "," }
-                            if cleaned != newValue { amountText = cleaned }
-                        }
-                }
-                .minimumScaleFactor(0.5)
+                TextField("0", text: $amountText)
+                    .font(.editorAmount)
+                    .monospacedDigit()
+                    .multilineTextAlignment(.center)
+                    .keyboardType(.decimalPad)
+                    .focused($amountFocused)
+                    .fixedSize()
+                    .accessibilityLabel("Amount")
+                    .onChange(of: amountText) { _, newValue in
+                        let cleaned = newValue.filter { $0.isNumber || $0 == "." || $0 == "," }
+                        if cleaned != newValue { amountText = cleaned }
+                    }
             }
+            .lineLimit(1)
+            .minimumScaleFactor(0.5)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 6)
             .contentShape(Rectangle())
@@ -177,7 +183,10 @@ struct ExpenseEditorView: View {
 
     private var categorySection: some View {
         Section {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 74), spacing: 8)], spacing: 8) {
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .top), count: isLargeText ? 3 : 5),
+                spacing: 8
+            ) {
                 ForEach(categories) { item in
                     CategoryChoice(category: item, isSelected: category == item) {
                         withAnimation(.snappy) { category = item }
@@ -188,14 +197,20 @@ struct ExpenseEditorView: View {
                         Image(systemName: "plus")
                             .font(.system(size: 18, weight: .semibold))
                             .frame(width: 44, height: 44)
-                            .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
-                        Text("New").font(.caption)
+                            .background(
+                                Color(.tertiarySystemFill),
+                                in: RoundedRectangle(cornerRadius: Theme.Radius.icon(44), style: .continuous)
+                            )
+                            .padding(4)
+                        Text("New")
+                            .font(.caption2)
+                            .lineLimit(2)
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
                     .foregroundStyle(.tint)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("New category")
             }
             .padding(.vertical, 4)
         } header: {
@@ -208,16 +223,20 @@ struct ExpenseEditorView: View {
     }
 
     private var detailsSection: some View {
-        Section("Details") {
-            TextField("Title (e.g. Lunch with team)", text: $title)
-                .textInputAutocapitalization(.sentences)
-            DatePicker("Date", selection: $date)
-            Picker(selection: $paymentMethod) {
-                ForEach(PaymentMethod.allCases) { method in
-                    Label(method.title, systemImage: method.icon).tag(method)
-                }
-            } label: {
+        Section {
+            dateRow
+            HStack {
                 Label("Payment", systemImage: "creditcard")
+                Spacer(minLength: 8)
+                Menu {
+                    Picker("Payment", selection: $paymentMethod) {
+                        ForEach(PaymentMethod.allCases) { method in
+                            Label(method.title, systemImage: method.icon).tag(method)
+                        }
+                    }
+                } label: {
+                    Label(paymentMethod.title, systemImage: paymentMethod.icon)
+                }
             }
             Picker(selection: $recurrence) {
                 ForEach(Recurrence.allCases) { option in
@@ -226,6 +245,31 @@ struct ExpenseEditorView: View {
             } label: {
                 Label("Repeat", systemImage: "repeat")
             }
+            .pickerStyle(.menu)
+        }
+    }
+
+    private var dateRow: some View {
+        let isToday = Calendar.current.isDateInToday(date)
+        let layout = isLargeText
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+            : AnyLayout(HStackLayout(spacing: 8))
+        return layout {
+            Label("Date", systemImage: "calendar")
+            if !isLargeText { Spacer(minLength: 0) }
+            Button {
+                date = .now
+            } label: {
+                Text("Today")
+                    .font(.subheadline.weight(.medium))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .foregroundStyle(isToday ? Color.accentColor : Color.primary)
+                    .background(isToday ? Color.accentColor.opacity(0.14) : Color(.tertiarySystemFill), in: Capsule())
+            }
+            .buttonStyle(.borderless)
+            DatePicker("Date", selection: $date)
+                .labelsHidden()
         }
     }
 
@@ -270,22 +314,19 @@ private struct CategoryChoice: View {
         Button(action: action) {
             VStack(spacing: 6) {
                 CategoryIcon(category: category, size: 44)
+                    .padding(4)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: Theme.Radius.icon(44) + 4, style: .continuous)
+                            .strokeBorder(isSelected ? category.color : Color.clear, lineWidth: 2)
+                    )
                 Text(category.name)
-                    .font(.caption)
-                    .lineLimit(1)
+                    .font(.caption2)
+                    .fontWeight(isSelected ? .bold : .regular)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
                     .foregroundStyle(Color.primary)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .padding(.horizontal, 2)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(isSelected ? category.color.opacity(0.14) : Color.clear)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(isSelected ? category.color : Color.clear, lineWidth: 2)
-            )
         }
         .buttonStyle(.plain)
         .accessibilityLabel(category.name)
@@ -317,7 +358,7 @@ struct TagEditor: View {
             }
 
             HStack {
-                Image(systemName: "number").foregroundStyle(.secondary)
+                Image(systemName: "tag").foregroundStyle(.secondary)
                 TextField("Add a tag", text: $input)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
@@ -358,4 +399,50 @@ struct TagEditor: View {
         guard !tag.isEmpty, !tags.contains(tag) else { return }
         tags.append(tag)
     }
+}
+
+private struct EditExpensePreview: View {
+    @Query(sort: \Expense.date, order: .reverse) private var expenses: [Expense]
+
+    var body: some View {
+        if let expense = expenses.first {
+            ExpenseEditorView(route: .edit(expense))
+        }
+    }
+}
+
+#Preview("New light") {
+    ExpenseEditorView(route: .new)
+        .modelContainer(PreviewData.container)
+        .previewVariant(.light)
+}
+
+#Preview("New dark") {
+    ExpenseEditorView(route: .new)
+        .modelContainer(PreviewData.container)
+        .previewVariant(.dark)
+}
+
+#Preview("New accessibility3") {
+    ExpenseEditorView(route: .new)
+        .modelContainer(PreviewData.container)
+        .previewVariant(.accessibility)
+}
+
+#Preview("Edit light") {
+    EditExpensePreview()
+        .modelContainer(PreviewData.container)
+        .previewVariant(.light)
+}
+
+#Preview("Edit dark") {
+    EditExpensePreview()
+        .modelContainer(PreviewData.container)
+        .previewVariant(.dark)
+}
+
+#Preview("Edit accessibility3") {
+    EditExpensePreview()
+        .modelContainer(PreviewData.container)
+        .previewVariant(.accessibility)
 }
