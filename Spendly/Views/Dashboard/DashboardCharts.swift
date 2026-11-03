@@ -165,7 +165,11 @@ struct MonthlyTrendChart: View {
                     AxisGridLine()
                     AxisValueLabel {
                         if let amount = value.as(Double.self) {
-                            Text(amount, format: .currency(code: currency).notation(.compactName).precision(.fractionLength(0)))
+                            if #available(iOS 18, *) {
+                                Text(amount, format: .currency(code: currency).notation(.compactName).precision(.fractionLength(0)))
+                            } else {
+                                Text(amount, format: .currency(code: currency).precision(.fractionLength(0)))
+                            }
                         }
                     }
                 }
