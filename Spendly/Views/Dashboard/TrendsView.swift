@@ -178,7 +178,7 @@ struct TrendsView: View {
 
         return Section {
             ForEach(rows, id: \.series.id) { row in
-                let content = SubcategoryRow(series: row.series, total: row.total, grand: grand,
+                let content = SubcategoryTrendRow(series: row.series, total: row.total, grand: grand,
                                              monthCount: period.rawValue, currency: currency)
                 if row.series.isRemainder {
                     content
@@ -209,7 +209,7 @@ struct TrendsView: View {
     }
 }
 
-private struct SubcategoryRow: View {
+private struct SubcategoryTrendRow: View {
     let series: SubcategorySeries
     let total: Decimal
     let grand: Decimal
