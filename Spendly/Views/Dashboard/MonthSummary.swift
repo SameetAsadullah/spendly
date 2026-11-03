@@ -133,3 +133,64 @@ enum MonthlyTrend {
         }
     }
 }
+
+/// One band of a main category's stacked charts: a subcategory, or "No subcategory".
+struct SubcategorySeries: Identifiable, Hashable {
+    let id: PersistentIdentifier
+    let name: String
+    let color: Color
+    let isRemainder: Bool
+}
+
+struct SubcategoryMonthTotal: Identifiable {
+    let month: Date
+    let series: SubcategorySeries
+    let total: Decimal
+    var id: String { "\(month.timeIntervalSinceReferenceDate)-\(series.name)" }
+}
+
+extension MonthlyTrend {
+    /// The subcategories in order, shaded from the parent colour, then "No subcategory" in gray.
+    static func series(for main: ExpenseCategory) -> [SubcategorySeries] {
+        let subcategories = main.sortedSubcategories
+        let shaded = subcategories.enumerated().map { index, subcategory in
+            SubcategorySeries(
+                id: subcategory.persistentModelID,
+                name: subcategory.name,
+                color: ExpenseCategory.shade(of: main.color, index: index, count: subcategories.count),
+                isRemainder: false
+            )
+        }
+        let remainder = SubcategorySeries(id: main.persistentModelID, name: "No subcategory",
+                                          color: Theme.uncategorized, isRemainder: true)
+        return shaded + [remainder]
+    }
+
+    /// Oldest month first, one entry per month and series, zero totals included.
+    static func subcategoryTotals(
+        for expenses: [Expense],
+        of main: ExpenseCategory,
+        monthsEndingAt end: Date,
+        count: Int,
+        calendar: Calendar = .current
+    ) -> [SubcategoryMonthTotal] {
+        let series = series(for: main)
+        let mainID = main.persistentModelID
+        let scoped = expenses.filter { $0.category?.mainCategory.persistentModelID == mainID }
+        let months = totals(for: [], monthsEndingAt: end, count: count, calendar: calendar).map(\.month)
+        let grouped = Dictionary(grouping: scoped) { expense in
+            MonthKey(month: calendar.startOfMonth(for: expense.date), seriesID: expense.category?.persistentModelID ?? mainID)
+        }
+        return months.flatMap { month in
+            series.map { item in
+                let items = grouped[MonthKey(month: month, seriesID: item.id)] ?? []
+                return SubcategoryMonthTotal(month: month, series: item, total: items.reduce(0) { $0 + $1.amount })
+            }
+        }
+    }
+
+    private struct MonthKey: Hashable {
+        let month: Date
+        let seriesID: PersistentIdentifier
+    }
+}

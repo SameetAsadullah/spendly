@@ -20,12 +20,18 @@ struct TrendsView: View {
     /// nil means all categories.
     @State private var categoryID: PersistentIdentifier?
 
+    /// `category` presets the Category picker; pass a main category.
+    init(endMonth: Date, category: ExpenseCategory? = nil) {
+        self.endMonth = endMonth
+        _categoryID = State(initialValue: category?.mainCategory.persistentModelID)
+    }
+
     private var selectedCategory: ExpenseCategory? {
         categories.first { $0.persistentModelID == categoryID }
     }
 
     var body: some View {
-        let scoped = categoryID == nil ? expenses : expenses.filter { $0.category?.persistentModelID == categoryID }
+        let scoped = categoryID == nil ? expenses : expenses.filter { $0.category?.mainCategory.persistentModelID == categoryID }
         let totals = MonthlyTrend.totals(for: scoped, monthsEndingAt: endMonth, count: period.rawValue)
         let total = totals.reduce(0) { $0 + $1.total }
         let highest = totals.filter { $0.total > 0 }.max { $0.total < $1.total }

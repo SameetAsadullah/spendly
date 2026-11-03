@@ -159,22 +159,40 @@ struct MonthlyTrendChart: View {
                 AxisValueLabel(format: .dateTime.month(totals.count > 6 ? .narrow : .abbreviated), centered: true)
             }
         }
-        .chartYAxis {
-            if style == .detailed {
-                AxisMarks(position: .trailing, values: .automatic(desiredCount: 4)) { value in
-                    AxisGridLine()
-                    AxisValueLabel {
-                        if let amount = value.as(Double.self) {
-                            if #available(iOS 18, *) {
-                                Text(amount, format: .currency(code: currency).notation(.compactName).precision(.fractionLength(0)))
-                            } else {
-                                Text(amount, format: .currency(code: currency).precision(.fractionLength(0)))
-                            }
-                        }
-                    }
-                }
+        .compactCurrencyYAxis(currency, isVisible: style == .detailed)
+        .frame(height: height)
+    }
+}
+
+/// Monthly totals of one main category, stacked by subcategory.
+struct SubcategoryTrendChart: View {
+    let totals: [SubcategoryMonthTotal]
+    let series: [SubcategorySeries]
+    let currency: String
+    var highlightedMonth: Date?
+    var showsAxis = true
+    var showsLegend = true
+    var height: CGFloat = 190
+
+    private var monthCount: Int { Set(totals.map(\.month)).count }
+
+    var body: some View {
+        Chart(totals) { item in
+            BarMark(
+                x: .value("Month", item.month, unit: .month),
+                y: .value("Spent", item.total.doubleValue)
+            )
+            .foregroundStyle(by: .value("Subcategory", item.series.name))
+            .opacity(highlightedMonth == nil || item.month == highlightedMonth ? 1 : 0.35)
+        }
+        .chartForegroundStyleScale(domain: series.map(\.name), range: series.map(\.color))
+        .chartLegend(showsLegend ? .visible : .hidden)
+        .chartXAxis {
+            AxisMarks(values: .stride(by: .month)) { _ in
+                AxisValueLabel(format: .dateTime.month(monthCount > 6 ? .narrow : .abbreviated), centered: true)
             }
         }
+        .compactCurrencyYAxis(currency, isVisible: showsAxis)
         .frame(height: height)
     }
 }
@@ -197,6 +215,26 @@ struct AverageRule: ChartContent {
 }
 
 extension View {
+    /// Trailing axis with compact currency labels ("$1.2K") on iOS 18, whole currency before it.
+    func compactCurrencyYAxis(_ currency: String, isVisible: Bool = true) -> some View {
+        chartYAxis {
+            if isVisible {
+                AxisMarks(position: .trailing, values: .automatic(desiredCount: 4)) { value in
+                    AxisGridLine()
+                    AxisValueLabel {
+                        if let amount = value.as(Double.self) {
+                            if #available(iOS 18, *) {
+                                Text(amount, format: .currency(code: currency).notation(.compactName).precision(.fractionLength(0)))
+                            } else {
+                                Text(amount, format: .currency(code: currency).precision(.fractionLength(0)))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     func currencyYAxis(_ currency: String) -> some View {
         chartYAxis {
             AxisMarks(position: .trailing) { value in

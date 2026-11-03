@@ -106,6 +106,18 @@ struct SubcategoryTests {
         #expect(try expenses().map(\.title) == ["Bus"])
     }
 
+    @Test func stackedTotalsHaveOneEntryPerMonthAndSeries() throws {
+        let series = MonthlyTrend.series(for: food)
+        #expect(series.map(\.name) == ["Outside", "Coffee", "No subcategory"])
+
+        let totals = MonthlyTrend.subcategoryTotals(for: try expenses(), of: food, monthsEndingAt: .now, count: 6)
+        #expect(totals.count == 18)
+        let thisMonth = Calendar.current.startOfMonth(for: .now)
+        let current = totals.filter { $0.month == thisMonth }
+        #expect(current.map(\.total) == [50, 4, 5])
+        #expect(totals.filter { $0.month != thisMonth }.allSatisfy { $0.total == 0 })
+    }
+
     @Test func shadesFollowTheSpec() {
         #expect(ExpenseCategory.shadeOpacity(index: 0, count: 3) == 1)
         #expect(ExpenseCategory.shadeOpacity(index: 1, count: 3) == 0.6)
