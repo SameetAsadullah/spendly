@@ -7,8 +7,8 @@ struct ActiveFilterBar: View {
     let categories: [ExpenseCategory]
     let currency: String
 
-    private var selectedCategories: [ExpenseCategory] {
-        categories.filter { filter.categoryIDs.contains($0.persistentModelID) }
+    private var categoryChips: [CategoryFilterChip] {
+        filter.categoryChips(in: categories)
     }
 
     private var selectedMethods: [PaymentMethod] {
@@ -22,9 +22,9 @@ struct ActiveFilterBar: View {
                     filter.datePreset = .allTime
                 }
             }
-            ForEach(selectedCategories) { category in
-                RemovableChip(text: category.name, icon: category.iconName, tint: category.color) {
-                    filter.categoryIDs.remove(category.persistentModelID)
+            ForEach(categoryChips) { chip in
+                RemovableChip(text: chip.label, icon: chip.iconName, tint: chip.category.color) {
+                    filter.remove(chip)
                 }
             }
             if filter.includeUncategorized {

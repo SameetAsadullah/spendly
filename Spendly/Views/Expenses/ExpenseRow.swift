@@ -21,7 +21,7 @@ struct ExpenseRow: View {
                     .lineLimit(isLarge ? 3 : 1)
 
                 HStack(spacing: 4) {
-                    Text(expense.category?.name ?? "Uncategorized")
+                    Text(expense.category?.path ?? "Uncategorized")
                     Image(systemName: expense.paymentMethod.icon)
                         .accessibilityLabel(expense.paymentMethod.title)
                     if expense.recurrence != .never {

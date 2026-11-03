@@ -35,8 +35,19 @@ struct ExpenseListView: View {
     }
 
     private var presetCategory: ExpenseCategory? {
-        guard filter.categoryIDs.count == 1, let id = filter.categoryIDs.first else { return nil }
+        guard filter.categoryIDs.count == 1,
+              let id = filter.singleCategoryID ?? filter.categoryIDs.first
+        else { return nil }
         return categories.first { $0.persistentModelID == id }
+    }
+
+    private var budgetCategory: ExpenseCategory? {
+        guard !filter.includeUncategorized,
+              let id = filter.singleCategoryID,
+              let category = categories.first(where: { $0.persistentModelID == id }),
+              category.hasBudget
+        else { return nil }
+        return category
     }
 
     private var availableTags: [String] {
@@ -54,6 +65,9 @@ struct ExpenseListView: View {
                 List {
                     Section {
                         summary(count: results.count, total: total)
+                        if let budgetCategory {
+                            budgetCard(for: budgetCategory)
+                        }
                         if filter.isActive {
                             ActiveFilterBar(filter: $filter, categories: categories, currency: currency)
                                 .padding(.horizontal, Theme.Spacing.gutter)
@@ -154,6 +168,36 @@ struct ExpenseListView: View {
             .contentTransition(.numericText())
             .lineLimit(1)
             .minimumScaleFactor(0.5)
+    }
+
+    private func budgetCard(for category: ExpenseCategory) -> some View {
+        let spent = category.total(in: Calendar.current.monthInterval(for: .now))
+        let budget = category.monthlyBudget
+        let remaining = budget - spent
+        let progress = (spent / budget).doubleValue
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("\(category.path) this month")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            BudgetBar(progress: progress, tint: category.color)
+            HStack(alignment: .firstTextBaseline) {
+                if remaining < 0 {
+                    Text("\((-remaining).formattedCurrency(currency)) over")
+                        .foregroundStyle(.red)
+                } else {
+                    Text("\(remaining.formattedCurrency(currency)) left")
+                }
+                Spacer(minLength: 8)
+                Text("\(spent.formattedCurrency(currency)) of \(budget.formattedCurrency(currency, fractionDigits: 0))")
+                    .foregroundStyle(.secondary)
+            }
+            .font(.subheadline.weight(.medium))
+            .monospacedDigit()
+        }
+        .padding(Theme.Spacing.gutter)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(.horizontal, Theme.Spacing.gutter)
+        .accessibilityElement(children: .combine)
     }
 
     private var sortText: some View {
@@ -284,7 +328,7 @@ struct ExpenseListView: View {
             var order: [String] = []
             var grouped: [String: [Expense]] = [:]
             for expense in items {
-                let name = expense.category?.name ?? "Uncategorized"
+                let name = expense.category?.path ?? "Uncategorized"
                 if grouped[name] == nil { order.append(name) }
                 grouped[name, default: []].append(expense)
             }
@@ -315,6 +359,12 @@ private var previewNoResults: ExpenseFilter {
     var filter = previewFiltered
     filter.searchText = "zzzzqx"
     return filter
+}
+
+@MainActor private func previewSubcategoryFilter() -> ExpenseFilter {
+    let context = ModelContext(PreviewData.container)
+    let categories = (try? context.fetch(FetchDescriptor<ExpenseCategory>())) ?? []
+    return .category(categories.first { $0.name == "Outside" })
 }
 
 #Preview("Expenses light") {
@@ -387,5 +437,17 @@ private var previewNoResults: ExpenseFilter {
     NavigationStack { ExpenseListView() }
         .modelContainer(PreviewData.emptyContainer)
         .previewVariant(.accessibility)
+}
+
+#Preview("Subcategory light") {
+    NavigationStack { ExpenseListView(filter: previewSubcategoryFilter()) }
+        .modelContainer(PreviewData.container)
+        .previewVariant(.light)
+}
+
+#Preview("Subcategory dark") {
+    NavigationStack { ExpenseListView(filter: previewSubcategoryFilter()) }
+        .modelContainer(PreviewData.container)
+        .previewVariant(.dark)
 }
 #endif
