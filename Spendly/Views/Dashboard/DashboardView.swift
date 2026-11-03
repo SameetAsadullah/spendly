@@ -347,7 +347,7 @@ struct DashboardView: View {
         let share = (slice.total / max(total, 1)).doubleValue.formatted(.percent.precision(.fractionLength(0)))
         let budget = slice.category?.monthlyBudget ?? 0
         let progress = budget > 0 ? (slice.total / budget).doubleValue : 0
-        let subcategoryCount = slice.subslices.filter { !$0.isRemainder }.count
+        let subcategoryCount = slice.category?.subcategories?.count ?? 0
         let subcategories = subcategoryCount > 0 ? " · \(subcategoryCount) \(subcategoryCount == 1 ? "subcategory" : "subcategories")" : ""
 
         return HStack(alignment: .top, spacing: 10) {
