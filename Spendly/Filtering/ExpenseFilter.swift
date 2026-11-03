@@ -135,7 +135,11 @@ struct ExpenseFilter: Equatable {
     var datePreset: DatePreset = .allTime
     var customStart: Date = Calendar.current.startOfMonth(for: .now)
     var customEnd: Date = .now
+    /// A main category here includes its subcategories, unless `subcategoryIDs` narrows it.
     var categoryIDs: Set<PersistentIdentifier> = []
+    /// For a main category in `categoryIDs`, the subcategories to keep. The main category's own ID
+    /// stands for "No subcategory". No entry, or an empty set, means all of them.
+    var subcategoryIDs: [PersistentIdentifier: Set<PersistentIdentifier>] = [:]
     var includeUncategorized = false
     var paymentMethods: Set<PaymentMethod> = []
     var minAmount: Decimal?
@@ -216,7 +220,7 @@ struct ExpenseFilter: Equatable {
             if let interval, !interval.containsHalfOpen(expense.date) { return false }
             if filtersCategory {
                 if let category = expense.category {
-                    if !categoryIDs.contains(category.persistentModelID) { return false }
+                    if !includes(category) { return false }
                 } else if !includeUncategorized {
                     return false
                 }
@@ -230,6 +234,15 @@ struct ExpenseFilter: Equatable {
             return true
         }
         return sort.sorted(filtered)
+    }
+
+    func includes(_ category: ExpenseCategory) -> Bool {
+        let id = category.persistentModelID
+        if category.isSubcategory, categoryIDs.contains(id) { return true }
+        let mainID = category.mainCategory.persistentModelID
+        guard categoryIDs.contains(mainID) else { return false }
+        guard let kept = subcategoryIDs[mainID], !kept.isEmpty else { return true }
+        return kept.contains(id)
     }
 }
 

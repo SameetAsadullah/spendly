@@ -182,12 +182,7 @@ struct CategoryListView: View {
 
     private func delete(_ category: ExpenseCategory, includingExpenses: Bool) {
         withAnimation {
-            if includingExpenses {
-                for expense in category.expenses ?? [] {
-                    context.delete(expense)
-                }
-            }
-            context.delete(category)
+            category.delete(includingExpenses: includingExpenses, in: context)
             try? context.save()
         }
     }

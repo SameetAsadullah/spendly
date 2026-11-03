@@ -19,7 +19,7 @@ enum CSVExporter {
                 escape(expense.displayTitle),
                 expense.amount.formatted(amountStyle),
                 currency,
-                escape(expense.category?.name ?? "Uncategorized"),
+                escape(expense.category?.path ?? "Uncategorized"),
                 escape(expense.paymentMethod.title),
                 escape(expense.tags.joined(separator: "; ")),
                 escape(expense.recurrence.title),

@@ -54,7 +54,7 @@ extension Expense {
         let fields = [
             title,
             notes,
-            category?.name ?? "Uncategorized",
+            category?.path ?? "Uncategorized",
             tags.joined(separator: " "),
             paymentMethod.title,
             AmountParser.string(from: amount),

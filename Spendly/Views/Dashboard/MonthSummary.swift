@@ -6,10 +6,45 @@ struct CategorySlice: Identifiable {
     let category: ExpenseCategory?
     let total: Decimal
     let count: Int
+    /// For a main category with subcategories: one slice per subcategory with spending, largest first,
+    /// plus a "No subcategory" slice for expenses on the main category itself.
+    var subslices: [CategorySlice] = []
+    /// The "No subcategory" slice: expenses on the main category itself.
+    var isRemainder = false
 
-    var name: String { category?.name ?? "Uncategorized" }
+    var name: String { isRemainder ? "No subcategory" : (category?.name ?? "Uncategorized") }
     var iconName: String { category?.iconName ?? "questionmark" }
-    var color: Color { category?.color ?? Theme.uncategorized }
+    var color: Color { isRemainder ? Theme.uncategorized : (category?.color ?? Theme.uncategorized) }
+
+    /// Groups expenses by main category, with subcategory spending rolled up into it.
+    static func byMainCategory(_ expenses: [Expense]) -> [CategorySlice] {
+        Dictionary(grouping: expenses) { $0.category?.mainCategory.persistentModelID }
+            .map { id, items in
+                let main = items.first?.category?.mainCategory
+                return CategorySlice(
+                    id: id,
+                    category: main,
+                    total: items.reduce(0) { $0 + $1.amount },
+                    count: items.count,
+                    subslices: main.map { $0.hasSubcategories ? bySubcategory(items, of: $0) : [] } ?? []
+                )
+            }
+            .sorted { $0.total > $1.total }
+    }
+
+    private static func bySubcategory(_ expenses: [Expense], of main: ExpenseCategory) -> [CategorySlice] {
+        let groups = Dictionary(grouping: expenses) { $0.category?.persistentModelID }
+        let subslices = groups
+            .compactMap { id, items -> CategorySlice? in
+                guard let category = items.first?.category, category.isSubcategory else { return nil }
+                return CategorySlice(id: id, category: category, total: items.reduce(0) { $0 + $1.amount }, count: items.count)
+            }
+            .sorted { $0.total > $1.total }
+        guard let direct = groups[main.persistentModelID], !direct.isEmpty else { return subslices }
+        let remainder = CategorySlice(id: main.persistentModelID, category: main,
+                                      total: direct.reduce(0) { $0 + $1.amount }, count: direct.count, isRemainder: true)
+        return subslices + [remainder]
+    }
 }
 
 struct DailyTotal: Identifiable {
@@ -40,17 +75,7 @@ struct MonthSummary {
             .filter { previousInterval.containsHalfOpen($0.date) }
             .reduce(0) { $0 + $1.amount }
 
-        let byCategory = Dictionary(grouping: inMonth) { $0.category?.persistentModelID }
-        self.slices = byCategory
-            .map { id, items in
-                CategorySlice(
-                    id: id,
-                    category: items.first?.category,
-                    total: items.reduce(0) { $0 + $1.amount },
-                    count: items.count
-                )
-            }
-            .sorted { $0.total > $1.total }
+        self.slices = CategorySlice.byMainCategory(inMonth)
 
         let byDay = Dictionary(grouping: inMonth) { calendar.startOfDay(for: $0.date) }
         self.daily = byDay
@@ -76,8 +101,11 @@ struct MonthSummary {
         previousTotal > 0 ? ((total - previousTotal) / previousTotal).doubleValue : nil
     }
 
+    /// A main category's total includes its subcategories.
     func spent(in category: ExpenseCategory) -> Decimal {
-        slices.first { $0.id == category.persistentModelID }?.total ?? 0
+        let main = slices.first { $0.id == category.mainCategory.persistentModelID }
+        guard category.isSubcategory else { return main?.total ?? 0 }
+        return main?.subslices.first { $0.id == category.persistentModelID && !$0.isRemainder }?.total ?? 0
     }
 }
 
