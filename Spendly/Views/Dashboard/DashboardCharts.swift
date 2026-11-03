@@ -124,6 +124,7 @@ struct MonthlyTrendChart: View {
     var highlightedMonth: Date?
     var style: Style = .detailed
     var height: CGFloat = 190
+    var tint: Color = .accentColor
 
     private var average: Decimal {
         totals.isEmpty ? 0 : totals.reduce(0) { $0 + $1.total } / Decimal(totals.count)
@@ -139,7 +140,7 @@ struct MonthlyTrendChart: View {
                     x: .value("Month", item.month, unit: .month),
                     y: .value("Spent", item.total.doubleValue)
                 )
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(tint)
                 .opacity(isHighlighted ? 1 : dimmedOpacity)
                 .cornerRadius(4)
                 .annotation(position: .top) {
