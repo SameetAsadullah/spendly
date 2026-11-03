@@ -79,7 +79,7 @@ enum SortOption: String, CaseIterable, Identifiable {
         case .oldest: "Oldest First"
         case .highest: "Highest Amount"
         case .lowest: "Lowest Amount"
-        case .alphabetical: "Title (A–Z)"
+        case .alphabetical: "Title A–Z"
         case .category: "Category"
         }
     }

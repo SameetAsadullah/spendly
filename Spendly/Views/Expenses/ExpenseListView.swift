@@ -47,43 +47,42 @@ struct ExpenseListView: View {
         let results = filter.apply(to: expenses)
         let total = results.reduce(0) { $0 + $1.amount }
 
-        List {
-            if !results.isEmpty {
-                Section {
-                    summary(count: results.count, total: total)
-                }
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
-            }
-
-            ForEach(sections(for: results)) { section in
-                Section {
-                    ForEach(section.items) { expense in
-                        row(for: expense)
-                    }
-                } header: {
-                    HStack {
-                        Text(section.title)
-                        Spacer()
-                        Text(section.total.formattedCurrency(currency))
-                            .monospacedDigit()
-                    }
-                }
-            }
-        }
-        .listStyle(.insetGrouped)
-        .navigationTitle(title)
-        .searchable(text: $filter.searchText, prompt: "Search title, notes, tags…")
-        .safeAreaInset(edge: .top, spacing: 0) {
-            if filter.isActive {
-                ActiveFilterBar(filter: $filter, categories: categories, currency: currency)
-            }
-        }
-        .overlay {
+        Group {
             if results.isEmpty {
                 emptyState
+            } else {
+                List {
+                    Section {
+                        summary(count: results.count, total: total)
+                        if filter.isActive {
+                            ActiveFilterBar(filter: $filter, categories: categories, currency: currency)
+                                .padding(.horizontal, Theme.Spacing.gutter)
+                        }
+                    }
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                    .listRowSeparator(.hidden)
+
+                    ForEach(sections(for: results)) { section in
+                        Section {
+                            ForEach(section.items) { expense in
+                                row(for: expense)
+                            }
+                        } header: {
+                            HStack(alignment: .firstTextBaseline) {
+                                Text(section.title)
+                                Spacer()
+                                Text(section.total.formattedCurrency(currency))
+                                    .monospacedDigit()
+                            }
+                        }
+                    }
+                }
+                .listStyle(.insetGrouped)
             }
         }
+        .navigationTitle(title)
+        .searchable(text: $filter.searchText, prompt: "Search title, notes or tags")
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 filterButton
@@ -91,11 +90,9 @@ struct ExpenseListView: View {
                 Button {
                     editorRoute = .new
                 } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .symbolRenderingMode(.hierarchical)
-                        .font(.title3)
+                    Image(systemName: "plus")
                 }
-                .accessibilityLabel("Add expense")
+                .accessibilityLabel("Add Expense")
             }
         }
         .sheet(isPresented: $showFilters) {
@@ -116,31 +113,53 @@ struct ExpenseListView: View {
 
     // MARK: Pieces
 
-    private func summary(count: Int, total: Decimal) -> some View {
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(filter.isActive || !filter.searchText.isEmpty ? "Filtered total" : "Total spent")
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.85))
-                Text(total.formattedCurrency(currency))
-                    .font(.system(.title, design: .rounded, weight: .bold))
-                    .foregroundStyle(.white)
-                    .contentTransition(.numericText())
-                    .minimumScaleFactor(0.6)
-                    .lineLimit(1)
-            }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("\(count) \(count == 1 ? "expense" : "expenses")")
-                    .font(.subheadline.weight(.semibold))
-                Text("avg \((total / Decimal(max(count, 1))).formattedCurrency(currency))")
-                    .font(.caption)
-                    .opacity(0.85)
-            }
-            .foregroundStyle(.white)
+    private func summaryText(count: Int) -> String {
+        let noun = count == 1 ? "expense" : "expenses"
+        let hasSearch = !filter.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        if !filter.isActive && !hasSearch {
+            return "\(count) \(noun) · all time"
         }
-        .padding(16)
-        .background(Theme.heroGradient, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        if !hasSearch, filter.activeCount == 1, filter.datePreset != .allTime, filter.datePreset != .custom {
+            return "\(count) \(noun) · \(filter.datePreset.title.lowercased())"
+        }
+        return "\(count) matching \(noun)"
+    }
+
+    private func summary(count: Int, total: Decimal) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(summaryText(count: count))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .firstTextBaseline) {
+                    totalText(total)
+                    Spacer(minLength: 8)
+                    sortText
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    totalText(total)
+                    sortText
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, Theme.Spacing.gutter)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func totalText(_ total: Decimal) -> some View {
+        Text(total.formattedCurrency(currency))
+            .font(.listTotalAmount)
+            .monospacedDigit()
+            .contentTransition(.numericText())
+            .lineLimit(1)
+            .minimumScaleFactor(0.5)
+    }
+
+    private var sortText: some View {
+        Text(filter.sort.title)
+            .font(.caption)
+            .foregroundStyle(.secondary)
     }
 
     private func row(for expense: Expense) -> some View {
@@ -150,19 +169,24 @@ struct ExpenseListView: View {
             ExpenseRow(expense: expense, currency: currency, showsDay: filter.sort.grouping != .day)
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            // The first action sits at the screen edge, so the order reads Edit, Duplicate, Delete.
             Button(role: .destructive) {
                 delete(expense)
             } label: {
                 Label("Delete", systemImage: "trash")
             }
-        }
-        .swipeActions(edge: .leading) {
             Button {
                 editorRoute = .duplicate(expense)
             } label: {
                 Label("Duplicate", systemImage: "plus.square.on.square")
             }
-            .tint(.indigo)
+            .tint(.gray)
+            Button {
+                editorRoute = .edit(expense)
+            } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+            .tint(Theme.brandFill)
         }
         .contextMenu {
             Button { editorRoute = .edit(expense) } label: { Label("Edit", systemImage: "pencil") }
@@ -179,55 +203,36 @@ struct ExpenseListView: View {
             Image(systemName: filter.isActive
                   ? "line.3.horizontal.decrease.circle.fill"
                   : "line.3.horizontal.decrease.circle")
-                .font(.title3)
-                .overlay(alignment: .topTrailing) {
-                    if filter.activeCount > 0 {
-                        Text("\(filter.activeCount)")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(minWidth: 16, minHeight: 16)
-                            .background(Color.red, in: Circle())
-                            .offset(x: 6, y: -6)
-                    }
-                }
         }
-        .accessibilityLabel("Filters")
-        .accessibilityValue(filter.activeCount > 0 ? "\(filter.activeCount) active" : "None")
+        .accessibilityLabel("Filter and Sort")
+        .accessibilityValue(filter.isActive ? "\(filter.activeCount) active" : "")
     }
 
     private func moreMenu(results: [Expense]) -> some View {
         Menu {
-            Picker(selection: $filter.sort) {
+            Picker("Sort By", selection: $filter.sort) {
                 ForEach(SortOption.allCases) { option in
-                    Label(option.title, systemImage: option.icon).tag(option)
+                    Text(option.title).tag(option)
                 }
-            } label: {
-                Label("Sort By", systemImage: "arrow.up.arrow.down")
             }
-            .pickerStyle(.menu)
+            .pickerStyle(.inline)
 
             Section {
                 ShareLink(
                     item: CSVDocument(expenses: results, currency: currency),
-                    preview: SharePreview("\(results.count) expenses (CSV)")
+                    preview: SharePreview("\(results.count) \(results.count == 1 ? "expense" : "expenses") (CSV)")
                 ) {
-                    Label("Export Results as CSV", systemImage: "square.and.arrow.up")
+                    Label(
+                        "Export \(results.count) \(results.count == 1 ? "Result" : "Results") as CSV",
+                        systemImage: "square.and.arrow.up"
+                    )
                 }
                 .disabled(results.isEmpty)
             }
-
-            if filter.isActive {
-                Button(role: .destructive) {
-                    filter.clearFilters()
-                } label: {
-                    Label("Clear Filters", systemImage: "xmark.circle")
-                }
-            }
         } label: {
             Image(systemName: "ellipsis.circle")
-                .font(.title3)
         }
-        .accessibilityLabel("Sort and export")
+        .accessibilityLabel("More")
     }
 
     @ViewBuilder
@@ -241,19 +246,24 @@ struct ExpenseListView: View {
                 Button("Add Expense") { editorRoute = .new }
                     .buttonStyle(.borderedProminent)
             }
-        } else if !filter.searchText.isEmpty && !filter.isActive {
-            ContentUnavailableView.search(text: filter.searchText)
         } else {
-            ContentUnavailableView {
-                Label("No Matching Expenses", systemImage: "line.3.horizontal.decrease.circle")
-            } description: {
-                Text("Try changing or clearing your filters.")
-            } actions: {
-                Button("Clear Filters") {
-                    filter.clearFilters()
-                    filter.searchText = ""
+            VStack(spacing: 0) {
+                if filter.searchText.isEmpty {
+                    ContentUnavailableView(
+                        "No Results",
+                        systemImage: "magnifyingglass",
+                        description: Text("No expenses match your filters.")
+                    )
+                } else {
+                    ContentUnavailableView.search(text: filter.searchText)
                 }
-                .buttonStyle(.bordered)
+                if filter.isActive {
+                    Button("Clear Filters") {
+                        filter.clearFilters()
+                    }
+                    .buttonStyle(.bordered)
+                    .padding(.bottom, 40)
+                }
             }
         }
     }
@@ -291,4 +301,89 @@ struct ExpenseListView: View {
             try? context.save()
         }
     }
+}
+
+private var previewFiltered: ExpenseFilter {
+    var filter = ExpenseFilter()
+    filter.datePreset = .thisMonth
+    filter.paymentMethods = [.card]
+    return filter
+}
+
+private var previewNoResults: ExpenseFilter {
+    var filter = previewFiltered
+    filter.searchText = "zzzzqx"
+    return filter
+}
+
+#Preview("Expenses light") {
+    NavigationStack { ExpenseListView() }
+        .modelContainer(PreviewData.container)
+        .previewVariant(.light)
+}
+
+#Preview("Expenses dark") {
+    NavigationStack { ExpenseListView() }
+        .modelContainer(PreviewData.container)
+        .previewVariant(.dark)
+}
+
+#Preview("Expenses accessibility3") {
+    NavigationStack { ExpenseListView() }
+        .modelContainer(PreviewData.container)
+        .previewVariant(.accessibility)
+}
+
+#Preview("Filtered light") {
+    NavigationStack { ExpenseListView(filter: previewFiltered) }
+        .modelContainer(PreviewData.container)
+        .previewVariant(.light)
+}
+
+#Preview("Filtered dark") {
+    NavigationStack { ExpenseListView(filter: previewFiltered) }
+        .modelContainer(PreviewData.container)
+        .previewVariant(.dark)
+}
+
+#Preview("Filtered accessibility3") {
+    NavigationStack { ExpenseListView(filter: previewFiltered) }
+        .modelContainer(PreviewData.container)
+        .previewVariant(.accessibility)
+}
+
+#Preview("No results light") {
+    NavigationStack { ExpenseListView(filter: previewNoResults) }
+        .modelContainer(PreviewData.container)
+        .previewVariant(.light)
+}
+
+#Preview("No results dark") {
+    NavigationStack { ExpenseListView(filter: previewNoResults) }
+        .modelContainer(PreviewData.container)
+        .previewVariant(.dark)
+}
+
+#Preview("No results accessibility3") {
+    NavigationStack { ExpenseListView(filter: previewNoResults) }
+        .modelContainer(PreviewData.container)
+        .previewVariant(.accessibility)
+}
+
+#Preview("No expenses light") {
+    NavigationStack { ExpenseListView() }
+        .modelContainer(PreviewData.emptyContainer)
+        .previewVariant(.light)
+}
+
+#Preview("No expenses dark") {
+    NavigationStack { ExpenseListView() }
+        .modelContainer(PreviewData.emptyContainer)
+        .previewVariant(.dark)
+}
+
+#Preview("No expenses accessibility3") {
+    NavigationStack { ExpenseListView() }
+        .modelContainer(PreviewData.emptyContainer)
+        .previewVariant(.accessibility)
 }
