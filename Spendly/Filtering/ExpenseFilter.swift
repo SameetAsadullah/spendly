@@ -24,7 +24,7 @@ enum DatePreset: String, CaseIterable, Identifiable {
         case .last30Days: "Last 30 Days"
         case .last3Months: "Last 3 Months"
         case .thisYear: "This Year"
-        case .custom: "Custom Range"
+        case .custom: "Custom"
         }
     }
 
@@ -157,6 +157,21 @@ struct ExpenseFilter: Equatable {
     }
 
     var isActive: Bool { activeCount > 0 }
+
+    /// Sets the preset and, for a dated preset, fills the From and To dates from its interval.
+    mutating func setPreset(_ preset: DatePreset, now: Date = .now, calendar: Calendar = .current) {
+        datePreset = preset
+        syncDates(now: now, calendar: calendar)
+    }
+
+    /// Fills customStart and customEnd from the preset. The interval is half-open, so the last day is end minus 1 second.
+    mutating func syncDates(now: Date = .now, calendar: Calendar = .current) {
+        guard datePreset != .custom,
+              let interval = datePreset.interval(customStart: customStart, customEnd: customEnd, now: now, calendar: calendar)
+        else { return }
+        customStart = interval.start
+        customEnd = interval.end.addingTimeInterval(-1)
+    }
 
     /// Clears every filter but keeps the search text and sort order.
     mutating func clearFilters() {

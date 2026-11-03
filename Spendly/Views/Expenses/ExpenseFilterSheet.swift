@@ -3,112 +3,43 @@ import SwiftUI
 
 struct ExpenseFilterSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AppStorage(AppSettings.currencyKey) private var currency = AppSettings.defaultCurrency
     @Binding var filter: ExpenseFilter
     let categories: [ExpenseCategory]
     let availableTags: [String]
     @State private var draft: ExpenseFilter
 
+    private let presets: [DatePreset] = [
+        .allTime, .today, .thisWeek, .thisMonth, .last30Days, .lastMonth, .last3Months, .thisYear, .custom,
+    ]
+
     init(filter: Binding<ExpenseFilter>, categories: [ExpenseCategory], availableTags: [String]) {
         _filter = filter
         self.categories = categories
         self.availableTags = availableTags
-        _draft = State(initialValue: filter.wrappedValue)
+        var initial = filter.wrappedValue
+        initial.syncDates()
+        _draft = State(initialValue: initial)
     }
 
     var body: some View {
         NavigationStack {
             Form {
                 Section("Sort") {
-                    Picker(selection: $draft.sort) {
+                    Picker("Sort by", selection: $draft.sort) {
                         ForEach(SortOption.allCases) { option in
-                            Label(option.title, systemImage: option.icon).tag(option)
+                            Text(option.title).tag(option)
                         }
-                    } label: {
-                        Label("Sort by", systemImage: "arrow.up.arrow.down")
                     }
+                    .pickerStyle(.menu)
                 }
 
-                Section("Date") {
-                    Picker(selection: $draft.datePreset) {
-                        ForEach(DatePreset.allCases) { preset in
-                            Text(preset.title).tag(preset)
-                        }
-                    } label: {
-                        Label("Period", systemImage: "calendar")
-                    }
-                    if draft.datePreset == .custom {
-                        DatePicker("From", selection: $draft.customStart, displayedComponents: .date)
-                        DatePicker("To", selection: $draft.customEnd, in: draft.customStart..., displayedComponents: .date)
-                    }
-                }
-
+                dateSection
                 categorySection
-
-                Section {
-                    HStack {
-                        Text("Minimum")
-                        Spacer()
-                        AmountField(placeholder: "Any", value: $draft.minAmount)
-                            .multilineTextAlignment(.trailing)
-                            .frame(maxWidth: 140)
-                    }
-                    HStack {
-                        Text("Maximum")
-                        Spacer()
-                        AmountField(placeholder: "Any", value: $draft.maxAmount)
-                            .multilineTextAlignment(.trailing)
-                            .frame(maxWidth: 140)
-                    }
-                } header: {
-                    Text("Amount (\(AppSettings.currencySymbol(for: currency)))")
-                } footer: {
-                    if let min = draft.minAmount, let max = draft.maxAmount, min > max {
-                        Text("Minimum is greater than maximum, so nothing will match.")
-                            .foregroundStyle(.red)
-                    }
-                }
-
-                Section("Payment Method") {
-                    FlowLayout(spacing: 8) {
-                        ForEach(PaymentMethod.allCases) { method in
-                            Button {
-                                draft.paymentMethods.toggle(method)
-                            } label: {
-                                Chip(text: method.title, icon: method.icon,
-                                     isSelected: draft.paymentMethods.contains(method))
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
-
-                if !availableTags.isEmpty {
-                    Section {
-                        FlowLayout(spacing: 8) {
-                            ForEach(availableTags, id: \.self) { tag in
-                                Button {
-                                    draft.tags.toggle(tag)
-                                } label: {
-                                    Chip(text: "#\(tag)", isSelected: draft.tags.contains(tag))
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        .padding(.vertical, 4)
-                    } header: {
-                        Text("Tags")
-                    } footer: {
-                        Text("Shows expenses with any of the selected tags.")
-                    }
-                }
-
-                Section {
-                    Toggle(isOn: $draft.recurringOnly) {
-                        Label("Recurring only", systemImage: "repeat")
-                    }
-                }
+                amountSection
+                paymentSection
+                tagSection
             }
             .scrollDismissesKeyboard(.interactively)
             .navigationTitle("Filter & Sort")
@@ -123,64 +54,180 @@ struct ExpenseFilterSheet: View {
                         filter = draft
                         dismiss()
                     }
-                    .fontWeight(.semibold)
+                    .fontWeight(.bold)
                 }
             }
         }
+        .presentationDetents([.large])
         .presentationDragIndicator(.visible)
     }
 
-    private var categorySection: some View {
+    // MARK: Sections
+
+    private var dateSection: some View {
         Section {
-            ForEach(categories) { category in
-                let isOn = draft.categoryIDs.contains(category.persistentModelID)
-                Button {
-                    draft.categoryIDs.toggle(category.persistentModelID)
-                } label: {
-                    HStack(spacing: 12) {
-                        CategoryIcon(category: category, size: 30)
-                        Text(category.name).foregroundStyle(Color.primary)
-                        Spacer()
-                        Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
-                            .foregroundStyle(isOn ? category.color : Color.secondary)
-                            .font(.title3)
+            FlowLayout(spacing: 8) {
+                ForEach(presets) { preset in
+                    Button {
+                        draft.setPreset(preset)
+                    } label: {
+                        Chip(text: preset.title, isSelected: draft.datePreset == preset)
                     }
+                    .buttonStyle(.plain)
                 }
             }
-            Button {
-                draft.includeUncategorized.toggle()
-            } label: {
-                HStack(spacing: 12) {
-                    CategoryIcon(category: nil, size: 30)
-                    Text("Uncategorized").foregroundStyle(Color.primary)
-                    Spacer()
-                    Image(systemName: draft.includeUncategorized ? "checkmark.circle.fill" : "circle")
-                        .foregroundStyle(draft.includeUncategorized ? Color.accentColor : Color.secondary)
-                        .font(.title3)
-                }
+            .padding(.vertical, 4)
+
+            if draft.datePreset != .allTime {
+                DatePicker("From", selection: dateBinding(\.customStart), displayedComponents: .date)
+                DatePicker("To", selection: dateBinding(\.customEnd), displayedComponents: .date)
             }
         } header: {
-            HStack {
+            Text("Date")
+        } footer: {
+            Text("A preset fills both dates. Changing either date switches the preset to Custom.")
+        }
+    }
+
+    private func dateBinding(_ keyPath: WritableKeyPath<ExpenseFilter, Date>) -> Binding<Date> {
+        Binding(
+            get: { draft[keyPath: keyPath] },
+            set: {
+                draft[keyPath: keyPath] = $0
+                draft.datePreset = .custom
+            }
+        )
+    }
+
+    private var categorySection: some View {
+        let hasSelection = !draft.categoryIDs.isEmpty || draft.includeUncategorized
+        return Section {
+            FlowLayout(spacing: 8) {
+                ForEach(categories) { category in
+                    Button {
+                        draft.categoryIDs.toggle(category.persistentModelID)
+                    } label: {
+                        Chip(
+                            text: category.name,
+                            icon: category.iconName,
+                            iconTint: category.color,
+                            isSelected: draft.categoryIDs.contains(category.persistentModelID)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+                Button {
+                    draft.includeUncategorized.toggle()
+                } label: {
+                    Chip(
+                        text: "Uncategorized",
+                        icon: "questionmark",
+                        iconTint: Theme.uncategorized,
+                        isSelected: draft.includeUncategorized
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.vertical, 4)
+        } header: {
+            HStack(spacing: 12) {
                 Text("Categories")
                 Spacer()
-                if !draft.categoryIDs.isEmpty || draft.includeUncategorized {
+                if hasSelection {
                     Button("Clear") {
                         draft.categoryIDs.removeAll()
                         draft.includeUncategorized = false
                     }
-                    .font(.caption.weight(.semibold))
+                    .font(.footnote.weight(.semibold))
                     .textCase(nil)
-                } else {
-                    Button("Select All") {
-                        draft.categoryIDs = Set(categories.map(\.persistentModelID))
-                    }
-                    .font(.caption.weight(.semibold))
-                    .textCase(nil)
-                    .disabled(categories.isEmpty)
                 }
+                Button("Select All") {
+                    draft.categoryIDs = Set(categories.map(\.persistentModelID))
+                    draft.includeUncategorized = true
+                }
+                .font(.footnote.weight(.semibold))
+                .textCase(nil)
             }
         } footer: {
             Text("No selection shows all categories.")
+        }
+    }
+
+    private var amountSection: some View {
+        Section {
+            let layout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+                : AnyLayout(HStackLayout(alignment: .top, spacing: 16))
+            layout {
+                amountField("Minimum", value: $draft.minAmount)
+                amountField("Maximum", value: $draft.maxAmount)
+            }
+            .padding(.vertical, 4)
+        } header: {
+            Text("Amount (\(AppSettings.currencySymbol(for: currency)))")
+        } footer: {
+            if let min = draft.minAmount, let max = draft.maxAmount, min > max {
+                Text("Minimum is greater than maximum, so nothing will match.")
+                    .foregroundStyle(.red)
+            }
+        }
+    }
+
+    private func amountField(_ label: String, value: Binding<Decimal?>) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            AmountField(placeholder: "No limit", value: value)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var paymentSection: some View {
+        Section {
+            FlowLayout(spacing: 8) {
+                ForEach(PaymentMethod.allCases) { method in
+                    Button {
+                        draft.paymentMethods.toggle(method)
+                    } label: {
+                        Chip(text: method.title, icon: method.icon,
+                             isSelected: draft.paymentMethods.contains(method))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, 4)
+        } header: {
+            Text("Payment Method")
+        } footer: {
+            Text("None selected includes every method.")
+        }
+    }
+
+    private var tagSection: some View {
+        Section {
+            if !availableTags.isEmpty {
+                FlowLayout(spacing: 8) {
+                    ForEach(availableTags, id: \.self) { tag in
+                        Button {
+                            draft.tags.toggle(tag)
+                        } label: {
+                            Chip(text: "#\(tag)", isSelected: draft.tags.contains(tag))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            Toggle(isOn: $draft.recurringOnly) {
+                Label("Recurring only", systemImage: "repeat")
+            }
+        } header: {
+            Text("Tags")
+        } footer: {
+            if !availableTags.isEmpty {
+                Text("Shows expenses with any of the selected tags.")
+            }
         }
     }
 }
@@ -193,4 +240,36 @@ extension Set {
             insert(element)
         }
     }
+}
+
+private struct FilterSheetPreview: View {
+    @Query(sort: \ExpenseCategory.sortOrder) private var categories: [ExpenseCategory]
+    @State private var filter: ExpenseFilter = {
+        var filter = ExpenseFilter()
+        filter.datePreset = .thisMonth
+        filter.paymentMethods = [.card]
+        return filter
+    }()
+
+    var body: some View {
+        ExpenseFilterSheet(filter: $filter, categories: categories, availableTags: ["coffee", "work", "trip"])
+    }
+}
+
+#Preview("Filter light") {
+    FilterSheetPreview()
+        .modelContainer(PreviewData.container)
+        .previewVariant(.light)
+}
+
+#Preview("Filter dark") {
+    FilterSheetPreview()
+        .modelContainer(PreviewData.container)
+        .previewVariant(.dark)
+}
+
+#Preview("Filter accessibility3") {
+    FilterSheetPreview()
+        .modelContainer(PreviewData.container)
+        .previewVariant(.accessibility)
 }
