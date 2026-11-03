@@ -15,6 +15,9 @@ struct CategoryEditorView: View {
     @State private var colorHex: String
     @State private var budget: Decimal?
     @State private var customColor: Color
+    @State private var editingSubcategory: ExpenseCategory?
+    @State private var showNewSubcategory = false
+    @State private var pendingDelete: ExpenseCategory?
 
     init(category: ExpenseCategory?, onSave: ((ExpenseCategory) -> Void)? = nil) {
         self.category = category
@@ -33,7 +36,8 @@ struct CategoryEditorView: View {
 
     private var isDuplicateName: Bool {
         existingCategories.contains { other in
-            other.persistentModelID != category?.persistentModelID
+            !other.isSubcategory
+                && other.persistentModelID != category?.persistentModelID
                 && other.name.compare(trimmedName, options: [.caseInsensitive, .diacriticInsensitive]) == .orderedSame
         }
     }
@@ -69,6 +73,10 @@ struct CategoryEditorView: View {
                     }
                 }
 
+                if let category {
+                    subcategoriesSection(category)
+                }
+
                 Section("Color") {
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 8), spacing: 6) {
                         ForEach(CategoryPalette.colors, id: \.self) { hex in
@@ -99,34 +107,7 @@ struct CategoryEditorView: View {
                 }
 
                 Section("Icon") {
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 8), spacing: 6) {
-                        ForEach(CategoryPalette.icons, id: \.self) { icon in
-                            let isSelected = iconName == icon
-                            Button {
-                                iconName = icon
-                            } label: {
-                                Image(systemName: icon)
-                                    .font(.footnote.weight(.medium))
-                                    .foregroundStyle(isSelected ? Color(hex: colorHex) : Color.primary)
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                    .aspectRatio(1, contentMode: .fit)
-                                    .background(
-                                        Color(.tertiarySystemFill),
-                                        in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                    )
-                                    .overlay {
-                                        if isSelected {
-                                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                                .strokeBorder(Color(hex: colorHex), lineWidth: 2)
-                                        }
-                                    }
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(icon)
-                            .accessibilityAddTraits(isSelected ? .isSelected : [])
-                        }
-                    }
-                    .padding(.vertical, 6)
+                    CategoryIconGrid(selection: $iconName, tint: Color(hex: colorHex))
                 }
 
                 Section {
@@ -138,7 +119,7 @@ struct CategoryEditorView: View {
                 } header: {
                     Text("Monthly Budget")
                 } footer: {
-                    Text("Optional. Leave empty for no budget bar.")
+                    Text("Optional. Covers \(trimmedName.isEmpty ? "this category" : trimmedName) and all its subcategories.")
                 }
             }
             .scrollDismissesKeyboard(.interactively)
@@ -154,6 +135,55 @@ struct CategoryEditorView: View {
                         .disabled(!canSave)
                 }
             }
+            .sheet(item: $editingSubcategory) { subcategory in
+                SubcategoryEditorView(subcategory: subcategory)
+            }
+            .sheet(isPresented: $showNewSubcategory) {
+                SubcategoryEditorView(parent: category)
+            }
+            .categoryDeleteDialog($pendingDelete)
+        }
+    }
+
+    private func subcategoriesSection(_ category: ExpenseCategory) -> some View {
+        Section {
+            ForEach(category.sortedSubcategories) { subcategory in
+                Button {
+                    editingSubcategory = subcategory
+                } label: {
+                    HStack(spacing: 12) {
+                        CategoryIcon(category: subcategory, size: 30)
+                        Text(subcategory.name)
+                            .foregroundStyle(Color.primary)
+                        Spacer(minLength: 8)
+                        if subcategory.hasBudget {
+                            Text(subcategory.monthlyBudget.formattedCurrency(currency, fractionDigits: 0))
+                                .font(.subheadline)
+                                .monospacedDigit()
+                                .foregroundStyle(.secondary)
+                        }
+                        Image(systemName: "chevron.right")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.tertiary)
+                            .accessibilityHidden(true)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .swipeActions(edge: .trailing) {
+                    Button(role: .destructive) {
+                        pendingDelete = subcategory
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
+            }
+            Button {
+                showNewSubcategory = true
+            } label: {
+                Label("Add Subcategory", systemImage: "plus.circle.fill")
+            }
+        } header: {
+            Text("SUBCATEGORIES")
         }
     }
 
@@ -193,7 +223,7 @@ struct CategoryEditorView: View {
 @MainActor private struct EditPreview: View {
     var body: some View {
         let category = try? PreviewData.container.mainContext
-            .fetch(FetchDescriptor<ExpenseCategory>(sortBy: [SortDescriptor(\.sortOrder)])).first
+            .fetch(FetchDescriptor<ExpenseCategory>(sortBy: [SortDescriptor(\.sortOrder)])).first { $0.hasSubcategories }
         CategoryEditorView(category: category)
     }
 }
