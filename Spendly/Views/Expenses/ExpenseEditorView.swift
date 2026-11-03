@@ -253,7 +253,7 @@ struct ExpenseEditorView: View {
                     }
                 }
                 Button { showNewSubcategory = true } label: {
-                    Chip(text: "+ New", icon: "plus", iconTint: .accentColor)
+                    Chip(text: "New", icon: "plus", iconTint: .accentColor)
                 }
                 .buttonStyle(.plain)
             }
