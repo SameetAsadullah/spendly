@@ -183,7 +183,7 @@ struct CategoryEditorView: View {
                 Label("Add Subcategory", systemImage: "plus.circle.fill")
             }
         } header: {
-            Text("SUBCATEGORIES")
+            Text("Subcategories")
         }
     }
 

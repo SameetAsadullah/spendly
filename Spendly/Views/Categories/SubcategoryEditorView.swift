@@ -103,7 +103,7 @@ struct SubcategoryEditorView: View {
                     LabeledContent {
                         Text("Same as parent")
                     } label: {
-                        Label("Colour", systemImage: "lock.fill")
+                        Label("Color", systemImage: "lock.fill")
                     }
                     .foregroundStyle(.secondary)
                 }
