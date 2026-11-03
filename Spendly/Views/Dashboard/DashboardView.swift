@@ -553,7 +553,7 @@ private struct OverviewPreview: View {
 }
 
 private extension Date {
-    /// Sample data covers about 90 days, so this month has no expenses.
+    /// Preview expenses cover the last 3 months, so this month has none.
     static var emptyPreviewMonth: Date {
         Calendar.current.date(byAdding: .month, value: -5, to: .now) ?? .now
     }

@@ -48,7 +48,7 @@ struct RootView: View {
         }
         .environment(\.selectTab, SelectTabAction { selection = $0 })
         .task {
-            SampleData.seedDefaultCategoriesIfNeeded(in: context)
+            DefaultCategories.seedIfNeeded(in: context)
             RecurringExpenseProcessor.process(in: context)
         }
         .onChange(of: scenePhase) { _, phase in

@@ -125,15 +125,14 @@ struct SubcategoryTests {
         #expect(abs(ExpenseCategory.shadeOpacity(index: 3, count: 4) - 0.35) < 0.0001)
     }
 
-    @Test func sampleDataSeedsSubcategories() throws {
+    @Test func defaultCategoriesIncludeSubcategories() throws {
         let sample = try ModelContainer.spendly(inMemory: true)
-        SampleData.insertSampleExpenses(in: sample.mainContext)
+        DefaultCategories.insert(in: sample.mainContext)
         let mains = try sample.mainContext.fetch(FetchDescriptor<ExpenseCategory>(predicate: #Predicate { $0.parent == nil }))
         let byName = Dictionary(uniqueKeysWithValues: mains.map { ($0.name, $0.sortedSubcategories.map(\.name)) })
         #expect(mains.count == 10)
         #expect(byName["Food & Dining"] == ["Home", "Outside", "Coffee"])
         #expect(byName["Transport"] == ["Fuel", "Rides", "Public transport"])
         #expect(byName["Bills & Utilities"] == ["Electricity", "Internet", "Phone", "Water"])
-        #expect(try sample.mainContext.fetchCount(FetchDescriptor<Expense>()) > 0)
     }
 }

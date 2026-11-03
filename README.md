@@ -77,7 +77,7 @@ Spendly/
 ├── SpendlyApp.swift              App entry point and SwiftData container
 ├── Models/                       Expense, ExpenseCategory, PaymentMethod, Recurrence, versioned schema
 ├── Filtering/ExpenseFilter.swift Filter, sort and date-preset logic
-├── Services/                     Recurring processor, CSV export, seed and sample data, device authentication
+├── Services/                     Recurring processor, CSV export, default categories, device authentication
 ├── Utilities/                    Settings keys, formatting, theme, preview data
 ├── Views/
 │   ├── RootView.swift            Tab bar

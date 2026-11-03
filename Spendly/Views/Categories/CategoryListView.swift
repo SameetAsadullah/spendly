@@ -106,12 +106,12 @@ struct CategoryListView: View {
                         Text("Create categories like Food, Rent or Travel to organize your expenses.")
                     } actions: {
                         Button("Add Suggested Categories") {
-                            SampleData.insertDefaultCategories(in: context)
+                            DefaultCategories.insert(in: context)
                         }
                         .buttonStyle(.borderedProminent)
                         Button("Add Category") { showNewCategory = true }
                             .buttonStyle(.bordered)
-                        Text("Suggested categories are \(SampleData.defaultCategories.count) common ones such as Food & Dining, Groceries and Transport. You can edit or delete them.")
+                        Text("Suggested categories are \(DefaultCategories.seeds.count) common ones such as Food & Dining, Groceries and Transport. You can edit or delete them.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
