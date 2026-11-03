@@ -1,6 +1,24 @@
 import SwiftData
 import SwiftUI
 
+struct SelectTabAction {
+    fileprivate var handler: (RootView.AppTab) -> Void = { _ in }
+
+    func callAsFunction(_ tab: RootView.AppTab) { handler(tab) }
+}
+
+private struct SelectTabKey: EnvironmentKey {
+    static let defaultValue = SelectTabAction()
+}
+
+extension EnvironmentValues {
+    /// Switches the root tab bar. Does nothing outside RootView, such as in previews.
+    var selectTab: SelectTabAction {
+        get { self[SelectTabKey.self] }
+        set { self[SelectTabKey.self] = newValue }
+    }
+}
+
 struct RootView: View {
     enum AppTab: Hashable {
         case overview, expenses, categories, settings
@@ -28,6 +46,7 @@ struct RootView: View {
                 .tabItem { Label("Settings", systemImage: "gearshape.fill") }
                 .tag(AppTab.settings)
         }
+        .environment(\.selectTab, SelectTabAction { selection = $0 })
         .task {
             SampleData.seedDefaultCategoriesIfNeeded(in: context)
             RecurringExpenseProcessor.process(in: context)

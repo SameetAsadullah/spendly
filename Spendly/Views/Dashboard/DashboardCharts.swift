@@ -19,25 +19,25 @@ struct CategoryDonutChart: View {
 
     var body: some View {
         let selected = selectedSlice
+        let selectedID = selected.map { $0.id }
 
         ZStack {
             Chart(slices) { slice in
                 SectorMark(
                     angle: .value("Amount", slice.total.doubleValue),
-                    innerRadius: .ratio(0.64),
+                    innerRadius: .ratio(0.6),
+                    outerRadius: .ratio(selectedID == .some(slice.id) ? 1 : 0.9),
                     angularInset: 1.5
                 )
                 .cornerRadius(5)
                 .foregroundStyle(slice.color)
-                .opacity(selected == nil || selected?.id == slice.id ? 1 : 0.3)
+                .opacity(selectedID == nil || selectedID == .some(slice.id) ? 1 : 0.4)
             }
             .chartLegend(.hidden)
             .chartAngleSelection(value: $selectedAngle)
 
             VStack(spacing: 2) {
                 if let selected {
-                    Image(systemName: selected.iconName)
-                        .foregroundStyle(selected.color)
                     Text(selected.name)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -73,16 +73,28 @@ struct DailySpendingChart: View {
     let interval: DateInterval
     let average: Decimal
     let currency: String
+    var now: Date = .now
+
+    private var days: [Date] {
+        let calendar = Calendar.current
+        let count = calendar.range(of: .day, in: .month, for: interval.start)?.count ?? 30
+        return (0..<count).compactMap { calendar.date(byAdding: .day, value: $0, to: interval.start) }
+    }
 
     var body: some View {
+        let calendar = Calendar.current
+        let totals = Dictionary(uniqueKeysWithValues: daily.map { ($0.day, $0.total) })
+        let labelDays = days.filter { [1, 8, 15, 22, 29].contains(calendar.component(.day, from: $0)) }
+
         Chart {
-            ForEach(daily) { item in
+            // Days after today get no mark.
+            ForEach(days.filter { $0 <= now }, id: \.self) { day in
                 BarMark(
-                    x: .value("Day", item.day, unit: .day),
-                    y: .value("Spent", item.total.doubleValue)
+                    x: .value("Day", day, unit: .day),
+                    y: .value("Spent", (totals[day] ?? 0).doubleValue)
                 )
-                .foregroundStyle(Theme.heroGradient)
-                .cornerRadius(4)
+                .foregroundStyle(Color.accentColor)
+                .cornerRadius(3)
             }
             if average > 0 {
                 AverageRule(label: "Daily average", average: average, currency: currency)
@@ -90,9 +102,8 @@ struct DailySpendingChart: View {
         }
         .chartXScale(domain: interval.start...interval.end)
         .chartXAxis {
-            AxisMarks(values: .stride(by: .day, count: 7)) { _ in
-                AxisGridLine()
-                AxisValueLabel(format: .dateTime.day())
+            AxisMarks(values: labelDays) { _ in
+                AxisValueLabel(format: .dateTime.day(), centered: true)
             }
         }
         .currencyYAxis(currency)
@@ -101,27 +112,45 @@ struct DailySpendingChart: View {
 }
 
 struct MonthlyTrendChart: View {
+    enum Style {
+        /// Overview card: no axis, no average, value above the selected bar.
+        case compact
+        /// Trends: average line and a compact currency axis.
+        case detailed
+    }
+
     let totals: [MonthTotal]
     let currency: String
     var highlightedMonth: Date?
+    var style: Style = .detailed
     var height: CGFloat = 190
 
     private var average: Decimal {
         totals.isEmpty ? 0 : totals.reduce(0) { $0 + $1.total } / Decimal(totals.count)
     }
 
+    private var dimmedOpacity: Double { style == .compact ? 0.3 : 0.35 }
+
     var body: some View {
         Chart {
             ForEach(totals) { item in
+                let isHighlighted = highlightedMonth == nil || item.month == highlightedMonth
                 BarMark(
                     x: .value("Month", item.month, unit: .month),
                     y: .value("Spent", item.total.doubleValue)
                 )
-                .foregroundStyle(Theme.heroGradient)
-                .opacity(highlightedMonth == nil || item.month == highlightedMonth ? 1 : 0.4)
+                .foregroundStyle(Color.accentColor)
+                .opacity(isHighlighted ? 1 : dimmedOpacity)
                 .cornerRadius(4)
+                .annotation(position: .top) {
+                    if style == .compact, isHighlighted, item.total > 0 {
+                        Text(item.total.formattedCurrency(currency, fractionDigits: 0))
+                            .font(.caption2.weight(.semibold))
+                            .monospacedDigit()
+                    }
+                }
             }
-            if average > 0 {
+            if style == .detailed, average > 0 {
                 AverageRule(label: "Monthly average", average: average, currency: currency)
             }
         }
@@ -130,7 +159,18 @@ struct MonthlyTrendChart: View {
                 AxisValueLabel(format: .dateTime.month(totals.count > 6 ? .narrow : .abbreviated), centered: true)
             }
         }
-        .currencyYAxis(currency)
+        .chartYAxis {
+            if style == .detailed {
+                AxisMarks(position: .trailing, values: .automatic(desiredCount: 4)) { value in
+                    AxisGridLine()
+                    AxisValueLabel {
+                        if let amount = value.as(Double.self) {
+                            Text(amount, format: .currency(code: currency).notation(.compactName).precision(.fractionLength(0)))
+                        }
+                    }
+                }
+            }
+        }
         .frame(height: height)
     }
 }
@@ -143,7 +183,7 @@ struct AverageRule: ChartContent {
     var body: some ChartContent {
         RuleMark(y: .value(label, average.doubleValue))
             .foregroundStyle(Color.orange)
-            .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+            .lineStyle(Theme.averageLineStyle)
             .annotation(position: .top, alignment: .leading) {
                 Text("avg \(average.formattedCurrency(currency, fractionDigits: 0))")
                     .font(.caption2.weight(.semibold))
@@ -155,7 +195,7 @@ struct AverageRule: ChartContent {
 extension View {
     func currencyYAxis(_ currency: String) -> some View {
         chartYAxis {
-            AxisMarks(position: .leading) { value in
+            AxisMarks(position: .trailing) { value in
                 AxisGridLine()
                 AxisValueLabel {
                     if let amount = value.as(Double.self) {
