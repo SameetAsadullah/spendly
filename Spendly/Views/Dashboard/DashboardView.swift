@@ -6,6 +6,7 @@ struct DashboardView: View {
     @Query(sort: \Expense.date, order: .reverse) private var expenses: [Expense]
     @AppStorage(AppSettings.currencyKey) private var currency = AppSettings.defaultCurrency
     @AppStorage(AppSettings.monthlyBudgetKey) private var storedMonthlyBudget = 0.0
+    @AppStorage(AppSettings.hidesHeroAmountsKey) private var hidesAmounts = false
 
     @State private var month: Date
     @State private var editorRoute: ExpenseEditorRoute?
@@ -122,12 +123,13 @@ struct DashboardView: View {
                 }
             }
 
-            Text(summary.total.formattedCurrency(currency))
+            Text(heroAmount(summary.total))
                 .font(.heroAmount)
                 .foregroundStyle(.white)
                 .contentTransition(.numericText())
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
+                .accessibilityLabel(hidesAmounts ? "Amount hidden" : summary.total.formattedCurrency(currency))
 
             if monthlyBudget > 0 {
                 budgetProgress(summary)
@@ -157,9 +159,25 @@ struct DashboardView: View {
     }
 
     private var heroLabel: some View {
-        Text(isCurrentMonth ? "Spent this month" : "Spent in \(month.formatted(.dateTime.month(.wide)))")
-            .font(.subheadline.weight(.medium))
-            .foregroundStyle(.white.opacity(0.85))
+        HStack(spacing: 6) {
+            Text(isCurrentMonth ? "Spent this month" : "Spent in \(month.formatted(.dateTime.month(.wide)))")
+            Button {
+                withAnimation(.snappy) { hidesAmounts.toggle() }
+            } label: {
+                Image(systemName: hidesAmounts ? "eye.slash" : "eye")
+                    .contentTransition(.symbolEffect(.replace))
+                    .padding(8)
+                    .contentShape(Rectangle())
+            }
+            .padding(-8)
+            .accessibilityLabel(hidesAmounts ? "Show amounts" : "Hide amounts")
+        }
+        .font(.subheadline.weight(.medium))
+        .foregroundStyle(.white.opacity(0.85))
+    }
+
+    private func heroAmount(_ value: Decimal) -> String {
+        hidesAmounts ? "••••••" : value.formattedCurrency(currency)
     }
 
     @ViewBuilder
@@ -191,11 +209,11 @@ struct DashboardView: View {
                 HStack {
                     budgetStatus(remaining: remaining, isOver: isOver)
                     Spacer(minLength: 8)
-                    Text("of \(monthlyBudget.formattedCurrency(currency))")
+                    Text("of \(heroAmount(monthlyBudget))")
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     budgetStatus(remaining: remaining, isOver: isOver)
-                    Text("of \(monthlyBudget.formattedCurrency(currency))")
+                    Text("of \(heroAmount(monthlyBudget))")
                 }
             }
             .font(.caption)
@@ -206,10 +224,10 @@ struct DashboardView: View {
     @ViewBuilder
     private func budgetStatus(remaining: Decimal, isOver: Bool) -> some View {
         if isOver {
-            Label("\((-remaining).formattedCurrency(currency)) over budget", systemImage: "exclamationmark.triangle.fill")
+            Label("\(heroAmount(-remaining)) over budget", systemImage: "exclamationmark.triangle.fill")
                 .fontWeight(.semibold)
         } else {
-            Text("\(remaining.formattedCurrency(currency)) left")
+            Text("\(heroAmount(remaining)) left")
                 .fontWeight(.semibold)
         }
     }
@@ -225,11 +243,11 @@ struct DashboardView: View {
                     HStack {
                         Text(previousMonth, format: .dateTime.month(.wide))
                         Spacer(minLength: 8)
-                        Text(summary.previousTotal.formattedCurrency(currency)).monospacedDigit()
+                        Text(heroAmount(summary.previousTotal)).monospacedDigit()
                     }
                     VStack(alignment: .leading, spacing: 2) {
                         Text(previousMonth, format: .dateTime.month(.wide))
-                        Text(summary.previousTotal.formattedCurrency(currency)).monospacedDigit()
+                        Text(heroAmount(summary.previousTotal)).monospacedDigit()
                     }
                 }
                 .font(.caption)

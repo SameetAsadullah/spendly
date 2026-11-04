@@ -6,6 +6,7 @@ enum AppSettings {
     static let appearanceKey = "appearance"
     static let didSeedKey = "didSeedDefaultCategories"
     static let appLockKey = "appLockEnabled"
+    static let hidesHeroAmountsKey = "hidesHeroAmounts"
 
     static var defaultCurrency: String {
         Locale.current.currency?.identifier ?? "USD"
