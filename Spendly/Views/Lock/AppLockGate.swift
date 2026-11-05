@@ -10,9 +10,12 @@ struct AppLockGate: ViewModifier {
     // The prompt itself makes the scene inactive, so only a return from the background prompts again.
     @State private var promptOnActive = false
     @State private var lockWindow = LockWindow()
+    // The Face ID sheet keeps the scene inactive for about a second after a match. That must not
+    // hold the overlay up, so it can fade at once.
+    @State private var isLeavingPrompt = false
 
     private var isCovered: Bool {
-        isEnabled && (isLocked || scenePhase != .active)
+        isEnabled && (isLocked || (scenePhase != .active && !isLeavingPrompt))
     }
 
     func body(content: Content) -> some View {
@@ -23,6 +26,12 @@ struct AppLockGate: ViewModifier {
                     lockWindow.show { Task { await unlock() } }
                 } else {
                     lockWindow.hide()
+                }
+            }
+            // Also clears it when the scene is already active, so the app switcher covers the app again.
+            .onChange(of: isLeavingPrompt && scenePhase != .inactive) { _, isDone in
+                if isDone {
+                    isLeavingPrompt = false
                 }
             }
             .onChange(of: scenePhase) { _, phase in
@@ -50,10 +59,9 @@ struct AppLockGate: ViewModifier {
             .task {
                 await unlock()
             }
-            // The Face ID sheet keeps the scene inactive for a moment after a match. Leaving the app
-            // before the reveal cancels it.
-            .task(id: lockWindow.isUnlocked && scenePhase == .active) {
-                if lockWindow.isUnlocked && scenePhase == .active {
+            // Leaving the app before the reveal cancels it.
+            .task(id: lockWindow.isUnlocked) {
+                if lockWindow.isUnlocked {
                     await reveal()
                 }
             }
@@ -75,10 +83,11 @@ struct AppLockGate: ViewModifier {
             }
             return
         }
+        isLeavingPrompt = true
         withAnimation(.snappy) { lockWindow.isUnlocked = true }
     }
 
-    /// Fades the overlay out once the app is active again, after a short look at the open lock.
+    /// Fades the overlay out after a short look at the open lock.
     private func reveal() async {
         guard (try? await Task.sleep(for: .milliseconds(250))) != nil else { return }
         withAnimation(.easeOut(duration: 0.35)) {
