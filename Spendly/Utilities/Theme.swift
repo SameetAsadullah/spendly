@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 
 enum Theme {
-    /// The same in both themes. Use it only on the Overview hero card and the lock screen.
+    /// The same in both themes. It appears only on the Overview hero card and in the app icon.
     static let heroGradient = LinearGradient(
         colors: [Color(hex: "#4F46E5"), Color(hex: "#7C3AED")],
         startPoint: .topLeading,
