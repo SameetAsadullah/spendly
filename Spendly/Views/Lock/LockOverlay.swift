@@ -29,7 +29,7 @@ struct LockOverlay: View {
             Spacer(minLength: 24)
             message
             Spacer(minLength: 24)
-            unlockControls
+            unlockButton
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 70)
@@ -60,21 +60,17 @@ struct LockOverlay: View {
                 .foregroundStyle(.primary)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
-            Text(subtitle)
-                .font(.body)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: 270)
-                .fixedSize(horizontal: false, vertical: true)
-                .contentTransition(.opacity)
+            if failedAttempts > 0 {
+                Text("\(DeviceAuth.methodName) didn't match. Try again.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: 270)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .transition(.opacity)
+            }
         }
         .multilineTextAlignment(.center)
         .accessibilityElement(children: .combine)
-    }
-
-    private var subtitle: LocalizedStringKey {
-        failedAttempts > 0
-            ? "\(DeviceAuth.methodName) didn't match. Try again."
-            : "Your numbers stay blurred until it's you."
     }
 
     private var lockSymbol: some View {
@@ -93,31 +89,24 @@ struct LockOverlay: View {
             .accessibilityHidden(true)
     }
 
-    private var unlockControls: some View {
-        VStack(spacing: 16) {
-            Button(action: onUnlock) {
-                Label {
-                    Text("Unlock with \(DeviceAuth.methodName)")
-                        .fixedSize(horizontal: false, vertical: true)
-                } icon: {
-                    Image(systemName: DeviceAuth.iconName)
-                        .font(.system(size: buttonIconSize))
-                }
-                .font(.headline)
-                .foregroundStyle(Color(.systemBackground))
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 12)
-                .frame(maxWidth: .infinity, minHeight: 56)
-                // Matches a capsule at 56 pt, and stays a pill when large text wraps the label.
-                .background(Color(.label), in: RoundedRectangle(cornerRadius: 28))
-                .shadow(color: .black.opacity(colorScheme == .light ? 0.15 : 0), radius: 12, y: 10)
+    private var unlockButton: some View {
+        Button(action: onUnlock) {
+            Label {
+                Text("Unlock with \(DeviceAuth.methodName)")
+                    .fixedSize(horizontal: false, vertical: true)
+            } icon: {
+                Image(systemName: DeviceAuth.iconName)
+                    .font(.system(size: buttonIconSize))
             }
-            Text("Everything stays on this iPhone")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
+            .font(.headline)
+            .foregroundStyle(Color(.systemBackground))
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, minHeight: 56)
+            // Matches a capsule at 56 pt, and stays a pill when large text wraps the label.
+            .background(Color(.label), in: RoundedRectangle(cornerRadius: 28))
+            .shadow(color: .black.opacity(colorScheme == .light ? 0.15 : 0), radius: 12, y: 10)
         }
     }
 }
